@@ -1,6 +1,11 @@
 # Copyright (c) 2019-2022, see AUTHORS. Licensed under MIT License, see LICENSE.
 
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 with lib;
 
@@ -49,8 +54,8 @@ in
 
       shell = mkOption {
         type = types.path;
-        default = "${pkgs.bashInteractive}/bin/bash";
-        defaultText = literalExpression "${pkgs.bashInteractive}/bin/bash";
+        default = lib.getExe pkgs.brush;
+        defaultText = literalExpression "${pkgs.brush}/bin/brush";
         description = "Path to login shell.";
       };
 
@@ -71,7 +76,6 @@ in
     };
 
   };
-
 
   ###### implementation
 

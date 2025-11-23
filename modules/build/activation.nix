@@ -1,6 +1,11 @@
 # Copyright (c) 2019-2022, see AUTHORS. Licensed under MIT License, see LICENSE.
 
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 with lib;
 
@@ -13,23 +18,23 @@ let
   # script's PATH.
   activationBinPaths = lib.makeBinPath [
     pkgs.bash
-    pkgs.coreutils
-    pkgs.diffutils
-    pkgs.findutils
+    pkgs.uutils-coreutils-noprefix
+    pkgs.uutils-diffutils
+    pkgs.uutils-findutils
     pkgs.gnugrep
     pkgs.gnused
     pkgs.ncurses # For `tput`.
     config.nix.package
   ];
 
-  mkActivationCmds = activation: concatStringsSep "\n" (
-    mapAttrsToList
-      (name: value: ''
+  mkActivationCmds =
+    activation:
+    concatStringsSep "\n" (
+      mapAttrsToList (name: value: ''
         noteEcho "Activating ${name}"
         ${value}
-      '')
-      activation
-  );
+      '') activation
+    );
 
   activationScript = pkgs.writeScript "activation-script" ''
     #!${pkgs.runtimeShell}
@@ -85,7 +90,8 @@ in
         type = types.attrs;
         description = ''
           Activation scripts for the Nix-on-Droid environment.
-        '' + activationOptionDescriptionSuffix;
+        ''
+        + activationOptionDescriptionSuffix;
       };
 
       activationBefore = mkOption {
@@ -94,7 +100,8 @@ in
         description = ''
           Activation scripts for the Nix-on-Droid environment that
           need to be run first.
-        '' + activationOptionDescriptionSuffix;
+        ''
+        + activationOptionDescriptionSuffix;
       };
 
       activationAfter = mkOption {
@@ -103,7 +110,8 @@ in
         description = ''
           Activation scripts for the Nix-on-Droid environment that
           need to be run last.
-        '' + activationOptionDescriptionSuffix;
+        ''
+        + activationOptionDescriptionSuffix;
       };
 
       activationPackage = mkOption {
@@ -131,7 +139,6 @@ in
 
   };
 
-
   ###### implementation
 
   config = {
@@ -148,8 +155,7 @@ in
       '';
 
       activationPackage =
-        pkgs.runCommand
-          "nix-on-droid-generation"
+        pkgs.runCommand "nix-on-droid-generation"
           {
             preferLocalBuild = true;
             allowSubstitutes = false;

@@ -1,16 +1,19 @@
 # Copyright (c) 2019-2024, see AUTHORS. Licensed under MIT License, see LICENSE.
 
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   cfg = config.android-integration;
 
-  termux-am =
-    pkgs.callPackage (import ../../pkgs/android-integration/termux-am.nix) { };
-  termux-tools =
-    pkgs.callPackage (import ../../pkgs/android-integration/termux-tools.nix) {
-      inherit termux-am;
-    };
+  termux-am = pkgs.callPackage (import ../../overlays/termux-am.nix) { };
+  termux-tools = pkgs.callPackage (import ../../overlays/termux-tools.nix) {
+    inherit termux-am;
+  };
 in
 {
 
@@ -117,16 +120,20 @@ in
 
   ###### implementation
 
-  config = let ifD = cond: pkg: if cond then [ pkg ] else [ ]; in {
-    environment.packages =
-      (ifD cfg.am.enable termux-am) ++
-      (ifD cfg.termux-setup-storage.enable termux-tools.setup_storage) ++
-      (ifD cfg.termux-open.enable termux-tools.open) ++
-      (ifD cfg.termux-open-url.enable termux-tools.open_url) ++
-      (ifD cfg.termux-reload-settings.enable termux-tools.reload_settings) ++
-      (ifD cfg.termux-wake-lock.enable termux-tools.wake_lock) ++
-      (ifD cfg.termux-wake-unlock.enable termux-tools.wake_unlock) ++
-      (ifD cfg.xdg-open.enable termux-tools.xdg_open) ++
-      (ifD cfg.unsupported.enable termux-tools.out);
-  };
+  config =
+    let
+      ifD = cond: pkg: if cond then [ pkg ] else [ ];
+    in
+    {
+      environment.packages =
+        (ifD cfg.am.enable termux-am)
+        ++ (ifD cfg.termux-setup-storage.enable termux-tools.setup_storage)
+        ++ (ifD cfg.termux-open.enable termux-tools.open)
+        ++ (ifD cfg.termux-open-url.enable termux-tools.open_url)
+        ++ (ifD cfg.termux-reload-settings.enable termux-tools.reload_settings)
+        ++ (ifD cfg.termux-wake-lock.enable termux-tools.wake_lock)
+        ++ (ifD cfg.termux-wake-unlock.enable termux-tools.wake_unlock)
+        ++ (ifD cfg.xdg-open.enable termux-tools.xdg_open)
+        ++ (ifD cfg.unsupported.enable termux-tools.out);
+    };
 }

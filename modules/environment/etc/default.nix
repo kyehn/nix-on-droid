@@ -1,6 +1,11 @@
 # Copyright (c) 2019-2022, see AUTHORS. Licensed under MIT License, see LICENSE.
 
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 with lib;
 
@@ -57,8 +62,10 @@ let
       config = {
         target = mkDefault name;
         source = mkIf (config.text != null) (
-          let name' = "etc-" + baseNameOf name;
-          in mkDefault (pkgs.writeText name' config.text)
+          let
+            name' = "etc-" + baseNameOf name;
+          in
+          mkDefault (pkgs.writeText name' config.text)
         );
       };
 
@@ -106,7 +113,6 @@ in
     };
 
   };
-
 
   ###### implementation
 

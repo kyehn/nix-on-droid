@@ -1,18 +1,23 @@
 # Copyright (c) 2019-2024, see AUTHORS. Licensed under MIT License, see LICENSE.
 
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 with lib;
 
 let
-  defaultNixpkgsBranch = "nixos-24.05";
-  defaultNixOnDroidBranch = "release-24.05";
+  defaultNixpkgsBranch = "nixpkgs-unstable";
+  defaultNixOnDroidBranch = "unstable";
 
   defaultNixpkgsChannel = "https://nixos.org/channels/${defaultNixpkgsBranch}";
-  defaultNixOnDroidChannel = "https://github.com/nix-community/nix-on-droid/archive/${defaultNixOnDroidBranch}.tar.gz";
+  defaultNixOnDroidChannel = "https://github.com/kyehn/nix-on-droid/archive/${defaultNixOnDroidBranch}.tar.gz";
 
   defaultNixpkgsFlake = "github:NixOS/nixpkgs/${defaultNixpkgsBranch}";
-  defaultNixOnDroidFlake = "github:nix-community/nix-on-droid/${defaultNixOnDroidBranch}";
+  defaultNixOnDroidFlake = "github:kyehn/nix-on-droid/${defaultNixOnDroidBranch}";
 in
 
 {
@@ -58,7 +63,6 @@ in
     };
 
   };
-
 
   ###### implementation
 

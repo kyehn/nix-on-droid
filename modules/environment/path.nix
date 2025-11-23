@@ -1,6 +1,11 @@
 # Copyright (c) 2019-2022, see AUTHORS. Licensed under MIT License, see LICENSE.
 
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 with lib;
 
@@ -31,13 +36,16 @@ in
       extraOutputsToInstall = mkOption {
         type = types.listOf types.str;
         default = [ ];
-        example = [ "doc" "info" "devdoc" ];
+        example = [
+          "doc"
+          "info"
+          "devdoc"
+        ];
         description = "List of additional package outputs to be installed as user packages.";
       };
     };
 
   };
-
 
   ###### implementation
 
@@ -65,10 +73,10 @@ in
 
     environment = {
       packages = [
-        (pkgs.callPackage ../../nix-on-droid { nix = config.nix.package; })
-        pkgs.bashInteractive
+        (pkgs.callPackage ../../overlays/nix-on-droid { nix = config.nix.package; })
+        pkgs.bash
         pkgs.cacert
-        pkgs.coreutils
+        pkgs.uutils-coreutils-noprefix
         pkgs.less # since nix tools really want a pager available, #27
         config.nix.package
       ];

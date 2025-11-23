@@ -1,6 +1,10 @@
 # Copyright (c) 2019-2022, see AUTHORS. Licensed under MIT License, see LICENSE.
 
-{ config, writeScript, writeText }:
+{
+  config,
+  writeScript,
+  writeText,
+}:
 
 let
   inherit (config.build) installationDir extraProotOptions;

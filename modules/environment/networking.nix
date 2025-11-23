@@ -5,14 +5,26 @@
 # (Copyright (c) 2003-2023 Eelco Dolstra and the Nixpkgs/NixOS contributors,
 #  licensed under MIT License as well)
 
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 with lib;
 
 let
   cfg = config.networking;
 
-  localhostMultiple = any (elem "localhost") (attrValues (removeAttrs cfg.hosts [ "127.0.0.1" "::1" ]));
+  localhostMultiple = any (elem "localhost") (
+    attrValues (
+      removeAttrs cfg.hosts [
+        "127.0.0.1"
+        "::1"
+      ]
+    )
+  );
 in
 
 {
@@ -56,19 +68,20 @@ in
 
   };
 
-
   ###### implementation
 
   config = {
 
-    assertions = [{
-      assertion = !localhostMultiple;
-      message = ''
-        `networking.hosts` maps "localhost" to something other than "127.0.0.1"
-        or "::1". This will break some applications. Please use
-        `networking.extraHosts` if you really want to add such a mapping.
-      '';
-    }];
+    assertions = [
+      {
+        assertion = !localhostMultiple;
+        message = ''
+          `networking.hosts` maps "localhost" to something other than "127.0.0.1"
+          or "::1". This will break some applications. Please use
+          `networking.extraHosts` if you really want to add such a mapping.
+        '';
+      }
+    ];
 
     networking.hostFiles =
       let
@@ -84,7 +97,11 @@ in
           pkgs.writeText "string-hosts" (allToString (filterAttrs (_: v: v != [ ]) cfg.hosts));
         extraHosts = pkgs.writeText "extra-hosts" cfg.extraHosts;
       in
-      mkBefore [ localhostHosts stringHosts extraHosts ];
+      mkBefore [
+        localhostHosts
+        stringHosts
+        extraHosts
+      ];
 
     environment.etc = {
       # /etc/services: TCP/UDP port assignments.

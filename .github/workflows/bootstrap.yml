@@ -1,0 +1,32 @@
+name: bootstrap
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag_name:
+        description: release tag name
+        required: false
+        default: ""
+        type: choice
+        options:
+          - ""
+          - bootstrap-unstable
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-24.04-arm # ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@main
+      - uses: ./.github/actions/install-nix
+      - uses: cachix/cachix-action@master
+        continue-on-error: true
+        with:
+          name: ${{ secrets.CACHIX_NAME }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - run: nix --verbose --print-build-logs build .#bootstrapZip .#deploy .#nix-on-droid .#termux-am .#termux-tools --impure
+      - uses: softprops/action-gh-release@master
+        if: ${{ inputs.release_tag_name != '' }}
+        with:
+          tag_name: ${{ inputs.release_tag_name }}
+          files: result/bootstrap-aarch64.zip

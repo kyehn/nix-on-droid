@@ -1,6 +1,13 @@
 # Copyright (c) 2019-2024, see AUTHORS. Licensed under MIT License, see LICENSE.
 
-{ config, lib, pkgs, initialPackageInfo, targetSystem, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  initialPackageInfo,
+  targetSystem,
+  ...
+}:
 
 with lib;
 
@@ -45,7 +52,6 @@ in
 
   };
 
-
   ###### implementation
 
   config = {
@@ -84,14 +90,7 @@ in
     environment.files = {
       inherit login loginInner;
 
-      prootStatic =
-        let
-          crossCompiledPaths = {
-            aarch64-linux = "/nix/store/7qd99m1w65x2vgqg453nd70y60sm3kay-proot-termux-static-aarch64-unknown-linux-android-unstable-2024-05-04";
-            x86_64-linux = "/nix/store/pakj3svvw84rhkzdc6211yhc2cgvc21f-proot-termux-static-x86_64-unknown-linux-android-unstable-2024-05-04";
-          };
-        in
-        "${crossCompiledPaths.${targetSystem}}";
+      prootStatic = "/nix/store/s35fxj78z0ymvl5rmdmmbnn3hnxvbafq-proot-termux-static-aarch64-unknown-linux-android-0-unstable-2025-10-19";
     };
 
   };

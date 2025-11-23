@@ -5,15 +5,21 @@
 # (Copyright (c) 2003-2019 Eelco Dolstra and the Nixpkgs/NixOS contributors,
 #  licensed under MIT License as well)
 
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 with lib;
 
 let
   tzdir = "${pkgs.tzdata}/share/zoneinfo";
   nospace = str: filter (c: c == " ") (stringToCharacters str) == [ ];
-  timezoneType = types.nullOr (types.addCheck types.str nospace)
-    // { description = "null or string without spaces"; };
+  timezoneType = types.nullOr (types.addCheck types.str nospace) // {
+    description = "null or string without spaces";
+  };
 in
 
 {
@@ -36,17 +42,17 @@ in
 
   };
 
-
   ###### implementation
 
   config = {
 
     environment = {
-      etc =
-        { zoneinfo.source = tzdir; }
-        // optionalAttrs (config.time.timeZone != null) {
-          localtime.source = "/etc/zoneinfo/${config.time.timeZone}";
-        };
+      etc = {
+        zoneinfo.source = tzdir;
+      }
+      // optionalAttrs (config.time.timeZone != null) {
+        localtime.source = "/etc/zoneinfo/${config.time.timeZone}";
+      };
 
       sessionVariables.TZDIR = "/etc/zoneinfo";
     };

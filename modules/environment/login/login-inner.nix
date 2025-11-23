@@ -1,6 +1,12 @@
 # Copyright (c) 2019-2024, see AUTHORS. Licensed under MIT License, see LICENSE.
 
-{ config, lib, initialPackageInfo, writeText, targetSystem }:
+{
+  config,
+  lib,
+  initialPackageInfo,
+  writeText,
+  targetSystem,
+}:
 
 let
   inherit (initialPackageInfo) cacert nix;
@@ -10,8 +16,10 @@ let
     if config.user.shell.type or "not-found" == "derivation" then
       if config.user.shell ? passthru.shellPath then
         "${config.user.shell}${config.user.shell.passthru.shellPath}"
-      else builtins.abort "Derivation without shell path found at `user.shell`. Use the path to the exact binary."
-    else config.user.shell;
+      else
+        builtins.abort "Derivation without shell path found at `user.shell`. Use the path to the exact binary."
+    else
+      config.user.shell;
 in
 
 writeText "login-inner" ''
@@ -91,7 +99,7 @@ writeText "login-inner" ''
           do
               if [[ $p =~ (.*)github:NixOS/nixpkgs.*\"\; ]]; then
                   printf "''${BASH_REMATCH[1]}${config.build.flake.nixpkgs}\";\n" "$p"
-              elif [[ $p =~ (.*)github:nix-community/nix-on-droid.*\"\; ]]; then
+              elif [[ $p =~ (.*)github:kyehn/nix-on-droid.*\"\; ]]; then
                   printf "''${BASH_REMATCH[1]}${config.build.flake.nix-on-droid}\";\n" "$p"
               else
                   printf '%s\n' "$p"

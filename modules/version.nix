@@ -1,6 +1,11 @@
 # Copyright (c) 2019-2024, see AUTHORS. Licensed under MIT License, see LICENSE.
 
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 with lib;
 
@@ -22,6 +27,9 @@ with lib;
         "23.05"
         "23.11"
         "24.05"
+        "24.11"
+        "25.05"
+        "25.11"
       ];
       description = ''
         It is occasionally necessary for Nix-on-Droid to change

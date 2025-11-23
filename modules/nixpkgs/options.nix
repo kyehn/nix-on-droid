@@ -5,45 +5,48 @@
 # (Copyright (c) 2017-2019 Robert Helgesson and Home Manager contributors,
 #  licensed under MIT License as well)
 
-{ config, lib, pkgs, isFlake, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  isFlake,
+  ...
+}:
 
 with lib;
 
 let
 
-  isConfig = x:
-    builtins.isAttrs x || builtins.isFunction x;
+  isConfig = x: builtins.isAttrs x || builtins.isFunction x;
 
-  optCall = f: x:
-    if builtins.isFunction f
-    then f x
-    else f;
+  optCall = f: x: if builtins.isFunction f then f x else f;
 
-  mergeConfig = lhs_: rhs_:
+  mergeConfig =
+    lhs_: rhs_:
     let
       lhs = optCall lhs_ { inherit pkgs; };
       rhs = optCall rhs_ { inherit pkgs; };
     in
-    lhs // rhs //
-    optionalAttrs (lhs ? packageOverrides) {
-      packageOverrides = pkgs:
-        optCall lhs.packageOverrides pkgs //
-        optCall (attrByPath [ "packageOverrides" ] { } rhs) pkgs;
-    } //
-    optionalAttrs (lhs ? perlPackageOverrides) {
-      perlPackageOverrides = pkgs:
-        optCall lhs.perlPackageOverrides pkgs //
-        optCall (attrByPath [ "perlPackageOverrides" ] { } rhs) pkgs;
+    lhs
+    // rhs
+    // optionalAttrs (lhs ? packageOverrides) {
+      packageOverrides =
+        pkgs: optCall lhs.packageOverrides pkgs // optCall (attrByPath [ "packageOverrides" ] { } rhs) pkgs;
+    }
+    // optionalAttrs (lhs ? perlPackageOverrides) {
+      perlPackageOverrides =
+        pkgs:
+        optCall lhs.perlPackageOverrides pkgs
+        // optCall (attrByPath [ "perlPackageOverrides" ] { } rhs) pkgs;
     };
 
   configType = mkOptionType {
     name = "nixpkgs-config";
     description = "nixpkgs config";
-    check = x:
+    check =
+      x:
       let
-        traceXIfNot = c:
-          if c x then true
-          else lib.traceSeqN 1 x false;
+        traceXIfNot = c: if c x then true else lib.traceSeqN 1 x false;
       in
       traceXIfNot isConfig;
     merge = _args: fold (def: mergeConfig def.value) { };
@@ -66,7 +69,9 @@ in
     nixpkgs = {
       config = mkOption {
         default = null;
-        example = { allowBroken = true; };
+        example = {
+          allowBroken = true;
+        };
         type = types.nullOr configType;
         description = ''
           The configuration of the Nix Packages collection. (For
@@ -155,15 +160,19 @@ in
 
   };
 
-
   ###### implementation
 
   config = {
 
     assertions = [
       {
-        assertion = isFlake -> config.nixpkgs.config == null && (config.nixpkgs.overlays == null || config.nixpkgs.overlays == [ ]);
-        message = "In a flake setup, the options nixpkgs.* should not be used. Instead, rely on the provided flake "
+        assertion =
+          isFlake
+          ->
+            config.nixpkgs.config == null
+            && (config.nixpkgs.overlays == null || config.nixpkgs.overlays == [ ]);
+        message =
+          "In a flake setup, the options nixpkgs.* should not be used. Instead, rely on the provided flake "
           + "outputs and pass in the necessary nixpkgs object.";
       }
     ];

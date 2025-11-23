@@ -1,6 +1,11 @@
 # Copyright (c) 2019-2024, see AUTHORS. Licensed under MIT License, see LICENSE.
 
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 with lib;
 
@@ -64,7 +69,10 @@ in
       sessionVariables = mkOption {
         default = { };
         type = types.attrs;
-        example = { EDITOR = "emacs"; GS_OPTIONS = "-sPAPERSIZE=a4"; };
+        example = {
+          EDITOR = "emacs";
+          GS_OPTIONS = "-sPAPERSIZE=a4";
+        };
         description = ''
           Environment variables to always set at login.
 
@@ -107,7 +115,6 @@ in
     };
 
   };
-
 
   ###### implementation
 
