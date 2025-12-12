@@ -1,4 +1,3 @@
-# Copyright (c) 2019-2020, see AUTHORS. Licensed under MIT License, see LICENSE.
 
 # Inspired by
 # https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/system/etc/setup-etc.pl

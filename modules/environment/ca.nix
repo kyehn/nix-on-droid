@@ -1,6 +1,9 @@
-# Copyright (c) 2019-2021, see AUTHORS. Licensed under MIT License, see LICENSE.
-
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 with lib;
 
@@ -13,7 +16,6 @@ in
   ###### interface
 
   options = { };
-
 
   ###### implementation
 

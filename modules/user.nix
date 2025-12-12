@@ -1,6 +1,9 @@
-# Copyright (c) 2019-2022, see AUTHORS. Licensed under MIT License, see LICENSE.
-
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 with lib;
 
@@ -10,8 +13,8 @@ let
   idsDerivation = pkgs.runCommandLocal "ids.nix" { } ''
     cat > $out <<EOF
     {
-      gid = $(${pkgs.coreutils}/bin/id -g);
-      uid = $(${pkgs.coreutils}/bin/id -u);
+      gid = $(${pkgs.uutils-coreutils-noprefix}/bin/id -g);
+      uid = $(${pkgs.uutils-coreutils-noprefix}/bin/id -u);
     }
     EOF
   '';
@@ -49,8 +52,8 @@ in
 
       shell = mkOption {
         type = types.path;
-        default = "${pkgs.bashInteractive}/bin/bash";
-        defaultText = literalExpression "${pkgs.bashInteractive}/bin/bash";
+        default = lib.getExe pkgs.bash;
+        defaultText = literalExpression "${pkgs.bash}/bin/bash";
         description = "Path to login shell.";
       };
 
@@ -71,7 +74,6 @@ in
     };
 
   };
-
 
   ###### implementation
 

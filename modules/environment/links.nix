@@ -1,6 +1,9 @@
-# Copyright (c) 2019-2022, see AUTHORS. Licensed under MIT License, see LICENSE.
-
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 with lib;
 
@@ -30,7 +33,6 @@ in
 
   };
 
-
   ###### implementation
 
   config = {
@@ -51,7 +53,7 @@ in
 
     environment = {
       binSh = "${pkgs.bashInteractive}/bin/sh";
-      usrBinEnv = "${pkgs.coreutils}/bin/env";
+      usrBinEnv = "${pkgs.uutils-coreutils-noprefix}/bin/env";
     };
 
   };

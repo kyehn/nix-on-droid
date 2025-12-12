@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   # Simply install just the packages
@@ -33,29 +38,10 @@
   system.stateVersion = "26.05";
 
   # Set up nix for flakes
-  #nix.extraOptions = ''
-  #  experimental-features = nix-command flakes
-  #'';
+  nix.extraOptions = ''
+    experimental-features = nix-command flakes
+  '';
 
   # Set your time zone
   #time.timeZone = "Europe/Berlin";
-
-  # After installing home-manager channel like
-  #   nix-channel --add https://github.com/nix-community/home-manager/archive/release-24.05.tar.gz home-manager
-  #   nix-channel --update
-  # you can configure home-manager in here like
-  #home-manager = {
-  #  useGlobalPkgs = true;
-  #
-  #  config =
-  #    { config, lib, pkgs, ... }:
-  #    {
-  #      # Read the changelog before changing this value
-  #      home.stateVersion = "24.05";
-  #
-  #      # insert home-manager config
-  #    };
-  #};
 }
-
-# vim: ft=nix

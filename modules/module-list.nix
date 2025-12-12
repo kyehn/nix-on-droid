@@ -1,9 +1,7 @@
-# Copyright (c) 2019-2024, see AUTHORS. Licensed under MIT License, see LICENSE.
-
-{ pkgs
-, home-manager-path
-, isFlake
-, targetSystem  # system to cross-compile to
+{
+  pkgs,
+  home-manager-path,
+  isFlake,
 }:
 
 [
@@ -31,8 +29,9 @@
   {
     _file = ./module-list.nix;
     _module.args = {
-      inherit home-manager-path isFlake targetSystem;
+      inherit home-manager-path isFlake;
       pkgs = pkgs.lib.mkDefault pkgs;
     };
   }
-] ++ pkgs.lib.optionals (!isFlake) [ ./nixpkgs/config.nix ]
+]
+++ pkgs.lib.optionals (!isFlake) [ ./nixpkgs/config.nix ]
