@@ -1,23 +1,18 @@
-# Copyright (c) 2019-2024, see AUTHORS. Licensed under MIT License, see LICENSE.
-
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
-  cfg = config.android-integration;
-
-  termux-am =
-    pkgs.callPackage (import ../../pkgs/android-integration/termux-am.nix) { };
-  termux-tools =
-    pkgs.callPackage (import ../../pkgs/android-integration/termux-tools.nix) {
-      inherit termux-am;
-    };
+  termux-am = pkgs.callPackage (import ../../overlays/termux-am.nix) { };
+  termux-tools = pkgs.callPackage (import ../../overlays/termux-tools) {
+    inherit termux-am;
+  };
 in
 {
-
-  ###### interface
-
   options.android-integration = {
-
     am.enable = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -28,7 +23,6 @@ in
         with real `am` (like `termux-am`).
       '';
     };
-
     termux-open.enable = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -39,7 +33,6 @@ in
         (uses `com.termux.app.TermuxOpenReceiver`).
       '';
     };
-
     termux-open-url.enable = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -50,7 +43,6 @@ in
         (uses `android.intent.action.VIEW`).
       '';
     };
-
     termux-setup-storage.enable = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -61,7 +53,6 @@ in
         and then creates a $HOME/storage directory with symlinks to storage.
       '';
     };
-
     termux-reload-settings.enable = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -72,7 +63,6 @@ in
         without the need to close all the sessions.
       '';
     };
-
     termux-wake-lock.enable = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -83,7 +73,6 @@ in
         This is the same action that's available from the notification.
       '';
     };
-
     termux-wake-unlock.enable = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -93,7 +82,6 @@ in
         that undoes the effect of the `termux-wake-lock` one.
       '';
     };
-
     xdg-open.enable = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -102,7 +90,6 @@ in
         Provide an `xdg-open` alias to `termux-open` command.
       '';
     };
-
     unsupported.enable = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -112,21 +99,22 @@ in
         For testing and for brave souls only.
       '';
     };
-
   };
 
-  ###### implementation
-
-  config = let ifD = cond: pkg: if cond then [ pkg ] else [ ]; in {
-    environment.packages =
-      (ifD cfg.am.enable termux-am) ++
-      (ifD cfg.termux-setup-storage.enable termux-tools.setup_storage) ++
-      (ifD cfg.termux-open.enable termux-tools.open) ++
-      (ifD cfg.termux-open-url.enable termux-tools.open_url) ++
-      (ifD cfg.termux-reload-settings.enable termux-tools.reload_settings) ++
-      (ifD cfg.termux-wake-lock.enable termux-tools.wake_lock) ++
-      (ifD cfg.termux-wake-unlock.enable termux-tools.wake_unlock) ++
-      (ifD cfg.xdg-open.enable termux-tools.xdg_open) ++
-      (ifD cfg.unsupported.enable termux-tools.out);
-  };
+  config =
+    let
+      ifD = cond: pkg: if cond then [ pkg ] else [ ];
+    in
+    {
+      environment.packages =
+        (ifD config.android-integration.am.enable termux-am)
+        ++ (ifD config.android-integration.termux-setup-storage.enable termux-tools.setup_storage)
+        ++ (ifD config.android-integration.termux-open.enable termux-tools.open)
+        ++ (ifD config.android-integration.termux-open-url.enable termux-tools.open_url)
+        ++ (ifD config.android-integration.termux-reload-settings.enable termux-tools.reload_settings)
+        ++ (ifD config.android-integration.termux-wake-lock.enable termux-tools.wake_lock)
+        ++ (ifD config.android-integration.termux-wake-unlock.enable termux-tools.wake_unlock)
+        ++ (ifD config.android-integration.xdg-open.enable termux-tools.xdg_open)
+        ++ (ifD config.android-integration.unsupported.enable termux-tools.out);
+    };
 }

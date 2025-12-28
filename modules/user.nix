@@ -1,67 +1,56 @@
-# Copyright (c) 2019-2022, see AUTHORS. Licensed under MIT License, see LICENSE.
-
-{ config, lib, pkgs, ... }:
-
-with lib;
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
-  cfg = config.user;
-
-  idsDerivation = pkgs.runCommandLocal "ids.nix" { } ''
-    cat > $out <<EOF
-    {
-      gid = $(${pkgs.coreutils}/bin/id -g);
-      uid = $(${pkgs.coreutils}/bin/id -u);
-    }
-    EOF
-  '';
-
-  ids = import idsDerivation;
+  ids = import (
+    pkgs.runCommandLocal "ids.nix" { } ''
+      cat > $out <<EOF
+      {
+        gid = $(${lib.getExe' pkgs.uutils-coreutils-noprefix "id"} -g);
+        uid = $(${lib.getExe' pkgs.uutils-coreutils-noprefix "id"} -u);
+      }
+      EOF
+    ''
+  );
 in
-
 {
-
-  ###### interface
-
   options = {
-
     user = {
-      group = mkOption {
-        type = types.str;
+      group = lib.mkOption {
+        type = lib.types.str;
         default = "nix-on-droid";
         description = "Group name.";
       };
-
-      gid = mkOption {
-        type = types.int;
+      gid = lib.mkOption {
+        type = lib.types.int;
         default = ids.gid;
         defaultText = "$(id -g)";
         description = ''
           Gid.  This value should not be set manually except you know what you are doing.
         '';
       };
-
-      home = mkOption {
-        type = types.path;
+      home = lib.mkOption {
+        type = lib.types.path;
         readOnly = true;
         description = "Path to home directory.";
       };
-
-      shell = mkOption {
-        type = types.path;
-        default = "${pkgs.bashInteractive}/bin/bash";
-        defaultText = literalExpression "${pkgs.bashInteractive}/bin/bash";
+      shell = lib.mkOption {
+        type = lib.types.path;
+        default = lib.getExe pkgs.bash;
+        defaultText = lib.literalExpression "${lib.getExe pkgs.bash}";
         description = "Path to login shell.";
       };
-
-      userName = mkOption {
-        type = types.str;
+      userName = lib.mkOption {
+        type = lib.types.str;
         default = "nix-on-droid";
         description = "User name.";
       };
-
-      uid = mkOption {
-        type = types.int;
+      uid = lib.mkOption {
+        type = lib.types.int;
         default = ids.uid;
         defaultText = "$(id -u)";
         description = ''
@@ -69,30 +58,21 @@ in
         '';
       };
     };
-
   };
 
-
-  ###### implementation
-
   config = {
-
     environment.etc = {
       "group".text = ''
         root:x:0:
-        ${cfg.group}:x:${toString cfg.gid}:${cfg.userName}
+        ${config.user.group}:x:${toString config.user.gid}:${config.user.userName}
       '';
-
       "passwd".text = ''
         root:x:0:0:System administrator:${config.build.installationDir}/root:/bin/sh
-        ${cfg.userName}:x:${toString cfg.uid}:${toString cfg.gid}:${cfg.userName}:${cfg.home}:${cfg.shell}
+        ${config.user.userName}:x:${toString config.user.uid}:${toString config.user.gid}:${config.user.userName}:${config.user.home}:${config.user.shell}
       '';
     };
-
     user = {
       home = "/data/data/com.termux.nix/files/home";
     };
-
   };
-
 }

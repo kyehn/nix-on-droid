@@ -1,7 +1,3 @@
-# Copyright (c) 2019-2020, see AUTHORS. Licensed under MIT License, see LICENSE.
-# The check for terminal output and color support is heavily inspired
-# by https://unix.stackexchange.com/a/10065.
-
 function setupColors() {
     normalColor=""
     errorColor=""

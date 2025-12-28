@@ -1,5 +1,3 @@
-# Copyright (c) 2019-2020, see AUTHORS. Licensed under MIT License, see LICENSE.
-
 if [[ -v VERBOSE ]]; then
     export VERBOSE_ECHO=echo
     export VERBOSE_ARG="--verbose"

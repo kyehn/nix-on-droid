@@ -1,11 +1,3 @@
-# Copyright (c) 2019-2020, see AUTHORS. Licensed under MIT License, see LICENSE.
-
-# Inspired by
-# https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/system/etc/setup-etc.pl
-# (Copyright (c) 2003-2019 Eelco Dolstra and the Nixpkgs/NixOS contributors,
-#  licensed under MIT License as well)
-
-
 set -eu -o pipefail
 
 : "${VERBOSE_ARG:=}"

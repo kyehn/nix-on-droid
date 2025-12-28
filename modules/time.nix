@@ -1,28 +1,18 @@
-# Copyright (c) 2019-2022, see AUTHORS. Licensed under MIT License, see LICENSE.
-
-# Inspired by
-# https://github.com/NixOS/nixpkgs/blob/master/nixos/modules/config/locale.nix
-# (Copyright (c) 2003-2019 Eelco Dolstra and the Nixpkgs/NixOS contributors,
-#  licensed under MIT License as well)
-
-{ config, lib, pkgs, ... }:
-
-with lib;
-
-let
-  tzdir = "${pkgs.tzdata}/share/zoneinfo";
-  nospace = str: filter (c: c == " ") (stringToCharacters str) == [ ];
-  timezoneType = types.nullOr (types.addCheck types.str nospace)
-    // { description = "null or string without spaces"; };
-in
-
 {
-
-  ###### interface
-
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+let
+  nospace = str: lib.filter (c: c == " ") (lib.stringToCharacters str) == [ ];
+  timezoneType = lib.types.nullOr (lib.types.addCheck lib.types.str nospace) // {
+    description = "null or string without spaces";
+  };
+in
+{
   options = {
-
-    time.timeZone = mkOption {
+    time.timeZone = lib.mkOption {
       default = null;
       type = timezoneType;
       example = "America/New_York";
@@ -33,23 +23,17 @@ in
         If null, the timezone will default to UTC.
       '';
     };
-
   };
 
-
-  ###### implementation
-
   config = {
-
     environment = {
-      etc =
-        { zoneinfo.source = tzdir; }
-        // optionalAttrs (config.time.timeZone != null) {
-          localtime.source = "/etc/zoneinfo/${config.time.timeZone}";
-        };
-
+      etc = {
+        zoneinfo.source = "${pkgs.tzdata}/share/zoneinfo";
+      }
+      // lib.optionalAttrs (config.time.timeZone != null) {
+        localtime.source = "/etc/zoneinfo/${config.time.timeZone}";
+      };
       sessionVariables.TZDIR = "/etc/zoneinfo";
     };
-
   };
 }

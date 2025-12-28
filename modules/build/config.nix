@@ -1,18 +1,13 @@
-# Copyright (c) 2019-2024, see AUTHORS. Licensed under MIT License, see LICENSE.
-
-{ config, lib, pkgs, ... }:
-
-with lib;
+{
+  lib,
+  ...
+}:
 
 {
-
-  ###### interface
-
   options = {
-
     build = {
-      initialBuild = mkOption {
-        type = types.bool;
+      initialBuild = lib.mkOption {
+        type = lib.types.bool;
         default = false;
         internal = true;
         description = ''
@@ -21,30 +16,21 @@ with lib;
           <filename>initial-build.nix</filename>.
         '';
       };
-
-      installationDir = mkOption {
-        type = types.path;
+      installationDir = lib.mkOption {
+        type = lib.types.path;
         internal = true;
         readOnly = true;
         description = "Path to installation directory.";
       };
-
-      extraProotOptions = mkOption {
-        type = types.listOf types.str;
+      extraProotOptions = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
         default = [ ];
         description = "Extra options passed to proot, e.g., extra bind mounts.";
       };
     };
-
   };
-
-
-  ###### implementation
 
   config = {
-
     build.installationDir = "/data/data/com.termux.nix/files/usr";
-
   };
-
 }
