@@ -1,0 +1,42 @@
+name: update-flake-lock
+on:
+  workflow_dispatch:
+jobs:
+  update-flake-lock:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@main
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@main
+        with:
+          repository: ${{ github.actor }}/kudzu
+          path: result-kudzu
+      - uses: ./result-kudzu/.github/actions/install-nix
+      - uses: cachix/cachix-action@master
+        with:
+          name: ${{ secrets.CACHIX_NAME }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - run: rm -f ~/.config/nix/nix.conf
+      - run: |
+          nix flake update
+          nix build --impure --print-out-paths .#proot-termux
+      - if: ${{ runner.arch == 'ARM64' }}
+        run: |
+          nix fmt
+          git add .
+          git commit --amend --no-edit
+      - if: ${{ runner.arch == 'ARM64' }}
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
+          force_with_lease: true
