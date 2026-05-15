@@ -1,0 +1,71 @@
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+
+let
+  libDir = pkgs.stdenv.hostPlatform.libDir;
+  ldsoBasename = builtins.unsafeDiscardStringContext (
+    lib.last (lib.splitString "/" pkgs.stdenv.cc.bintools.dynamicLinker)
+  );
+
+  # Hard-code to avoid creating another instance of nixpkgs. Also avoids eval errors in some cases.
+  libDir32 = "lib"; # pkgs.pkgsi686Linux.stdenv.hostPlatform.libDir
+  ldsoBasename32 = "ld-linux.so.2"; # last (splitString "/" pkgs.pkgsi686Linux.stdenv.cc.bintools.dynamicLinker)
+in
+{
+  options = {
+    environment.ldso = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      description = ''
+        The executable to link into the normal FHS location of the ELF loader.
+      '';
+    };
+
+    environment.ldso32 = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      description = ''
+        The executable to link into the normal FHS location of the 32-bit ELF loader.
+
+        This currently only works on x86_64 architectures.
+      '';
+    };
+  };
+
+  config = {
+    assertions = [
+      {
+        assertion = isNull config.environment.ldso32 || pkgs.stdenv.hostPlatform.isx86_64;
+        message = "Option environment.ldso32 currently only works on x86_64.";
+      }
+    ];
+
+    system.build.proot.bind =
+      (
+        if isNull config.environment.ldso then
+          [ ]
+        else
+          [
+            {
+              host_path = "${config.system.build.installationDir}${config.environment.ldso}";
+              guest_location = "/${libDir}/${ldsoBasename}";
+            }
+          ]
+      )
+      ++ lib.optionals pkgs.stdenv.hostPlatform.isx86_64 (
+        if isNull config.environment.ldso32 then
+          [ ]
+        else
+          [
+            {
+              host_path = "${config.system.build.installationDir}${config.environment.ldso32}";
+              guest_location = "/${libDir32}/${ldsoBasename32}";
+            }
+          ]
+      );
+  };
+}

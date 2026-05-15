@@ -1,43 +1,47 @@
-# Copyright (c) 2019-2024, see AUTHORS. Licensed under MIT License, see LICENSE.
-
-{ targetSystem ? builtins.currentSystem  # system to compile for
-, config ? null
-, extraSpecialArgs ? { }
-, pkgs ? import <nixpkgs> { }
-, home-manager-path ? <home-manager>
-, isFlake ? false
+{
+  inputs,
+  configuration,
+  pkgs,
+  lib ? pkgs.lib,
+  extraSpecialArgs ? { },
 }:
 
-with pkgs.lib;
-
 let
-  defaultConfigFile = "${builtins.getEnv "HOME"}/.config/nixpkgs/nix-on-droid.nix";
+  specialArgs = lib.recursiveUpdate {
+    inherit inputs lib pkgs;
+  } extraSpecialArgs;
 
-  configModule =
-    if config != null then config
-    else if builtins.pathExists defaultConfigFile then defaultConfigFile
-    else pkgs.config.nix-on-droid or (throw "No config file found! Create one in ~/.config/nixpkgs/nix-on-droid.nix");
-
-  nodModules = import ./module-list.nix {
-    inherit pkgs home-manager-path isFlake targetSystem;
+  evaluated = lib.evalModules {
+    class = "nixos";
+    modules = [ configuration ] ++ import ./modules.nix { inherit lib pkgs; };
+    inherit specialArgs;
   };
 
-  rawModule = evalModules {
-    modules = [ configModule ] ++ nodModules;
-    specialArgs = extraSpecialArgs;
-    class = "nixOnDroid";
+  failedAssertions = lib.filter (assertion: !assertion.assertion) evaluated.config.assertions;
+
+  baseConfiguration = {
+    _type = "configuration";
+    inherit lib pkgs specialArgs;
+    inherit (evaluated) _module config options;
+    modules = evaluated._module.args.modules or [ ];
+    extendModules =
+      modules:
+      import ./default.nix {
+        inherit
+          extraSpecialArgs
+          inputs
+          lib
+          pkgs
+          ;
+        configuration = {
+          imports = [ configuration ] ++ modules;
+        };
+      };
   };
-
-  failedAssertions = map (x: x.message) (filter (x: !x.assertion) rawModule.config.assertions);
-
-  module =
-    if failedAssertions != [ ]
-    then throw "\nFailed assertions:\n${concatMapStringsSep "\n" (x: "- ${x}") failedAssertions}"
-    else showWarnings rawModule.config.warnings rawModule;
 in
-
-{
-  inherit (module.config.build) activationPackage;
-  inherit (module) config options;
-  inherit pkgs;
-}
+if failedAssertions != [ ] then
+  throw "\nFailed assertions:\n${
+    lib.concatMapStringsSep "\n" (assertion: "- ${assertion.message}") failedAssertions
+  }"
+else
+  lib.showWarnings evaluated.config.warnings baseConfiguration

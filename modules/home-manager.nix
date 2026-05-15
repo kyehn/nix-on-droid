@@ -1,132 +1,44 @@
-# Copyright (c) 2019-2022, see AUTHORS. Licensed under MIT License, see LICENSE.
-
-{ config, lib, pkgs, home-manager-path, ... }:
-
-with lib;
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   cfg = config.home-manager;
-
-  extendedLib = import (home-manager-path + "/modules/lib/stdlib-extended.nix") lib;
-
-  hmModule = types.submoduleWith {
-    specialArgs = { lib = extendedLib; } // cfg.extraSpecialArgs;
-    modules = [
-      ({ name, ... }: {
-        imports = import (home-manager-path + "/modules/modules.nix") {
-          inherit pkgs;
-          lib = extendedLib;
-          useNixpkgsModule = !cfg.useGlobalPkgs;
-        };
-
-        config = {
-          submoduleSupport.enable = true;
-          submoduleSupport.externalPackageInstall = cfg.useUserPackages;
-
-          home.username = config.user.userName;
-          home.homeDirectory = config.user.home;
-        };
-      })
-    ] ++ cfg.sharedModules;
-  };
 in
-
 {
-
-  ###### interface
-
-  options = {
-
-    home-manager = {
-      backupFileExtension = mkOption {
-        type = types.nullOr types.str;
-        default = null;
-        example = "backup";
-        description = ''
-          On activation move existing files by appending the given
-          file extension rather than exiting with an error.
-        '';
-      };
-
-      config = mkOption {
-        type = types.nullOr hmModule;
-        default = null;
-        # Prevent the entire submodule being included in the documentation.
-        visible = "shallow";
-        description = ''
-          Home Manager configuration, see
-          <link xlink:href="https://nix-community.github.io/home-manager/options.html" />.
-        '';
-      };
-
-      extraSpecialArgs = mkOption {
-        type = types.attrs;
-        default = { };
-        example = literalExpression "{ inherit emacs-overlay; }";
-        description = ''
-          Extra <literal>specialArgs</literal> passed to Home Manager. This
-          option can be used to pass additional arguments to all modules.
-        '';
-      };
-
-      sharedModules = mkOption {
-        type = with types; listOf raw;
-        default = [ ];
-        example = literalExpression "[ { home.packages = [ nixpkgs-fmt ]; } ]";
-        description = ''
-          Extra modules.
-        '';
-      };
-
-      useGlobalPkgs = mkEnableOption ''
-        using the system configuration's <literal>pkgs</literal>
-        argument in Home Manager. This disables the Home Manager
-        options <option>nixpkgs.*</option>
-      '';
-
-      useUserPackages = mkEnableOption ''
-        installation of user packages through the
-        <option>environment.packages</option> option.
-      '' // {
-        default = versionAtLeast config.system.stateVersion "20.09";
-      };
+  config = {
+    home-manager.extraSpecialArgs.nixosConfig = config;
+    programs.switch-to-configuration.process-compose.config.processes.home-manager = {
+      environment = [
+        "HOME=${config.users.users.nix-on-droid.home}"
+        "USER=${config.users.users.nix-on-droid.name}"
+        "PATH=${
+          lib.makeBinPath [
+            pkgs.bash
+            pkgs.coreutils
+            pkgs.findutils
+            pkgs.gnugrep
+            pkgs.gnused
+            pkgs.gawk
+          ]
+        }"
+        "TERM=xterm-256color"
+        "QT_QPA_PLATFORM=offscreen"
+        "NIX_STATE_DIR=/nix/var/nix"
+        "XDG_STATE_HOME=${config.users.users.nix-on-droid.home}/.local/state"
+        "XDG_DATA_HOME=${config.users.users.nix-on-droid.home}/.local/share"
+        "XDG_CACHE_HOME=${config.users.users.nix-on-droid.home}/.cache"
+        "LANG=C.UTF-8"
+        "SHELL=${lib.getExe pkgs.bashNonInteractive}"
+      ]
+      ++ (lib.optional (
+        cfg.backupFileExtension != null
+      ) "HOME_MANAGER_BACKUP_EXT=${cfg.backupFileExtension}")
+      ++ (lib.optional cfg.overwriteBackup "HOME_MANAGER_BACKUP_OVERWRITE=1");
+      command = "${cfg.users.nix-on-droid.home.activationPackage}/activate";
     };
-
-  };
-
-
-  ###### implementation
-
-  config = mkIf (cfg.config != null) {
-
-    inherit (cfg.config) assertions warnings;
-
-    build = {
-      activationBefore = mkIf cfg.useUserPackages {
-        setPriorityHomeManagerPath = ''
-          if nix-env -q | grep '^home-manager-path$'; then
-            $DRY_RUN_CMD nix-env $VERBOSE_ARG --set-flag priority 120 home-manager-path
-          fi
-        '';
-      };
-
-      activationAfter.homeManager = concatStringsSep " " (
-        optional
-          (cfg.backupFileExtension != null)
-          "HOME_MANAGER_BACKUP_EXT='${cfg.backupFileExtension}'"
-        ++ [ "${cfg.config.home.activationPackage}/activate" ]
-      );
-    };
-
-    environment.packages = mkIf cfg.useUserPackages cfg.config.home.packages;
-
-    # home-manager has a quirk redefining the profile location
-    # to "/etc/profiles/per-user/${cfg.username}" if useUserPackages is on.
-    # https://github.com/nix-community/home-manager/blob/0006da1381b87844c944fe8b925ec864ccf19348/modules/home-environment.nix#L414
-    # Fortunately, it's not that hard to us to workaround with just a symlink.
-    environment.etc = mkIf cfg.useUserPackages {
-      "profiles/per-user/${config.user.userName}".source = "${config.user.home}/.nix-profile";
-    };
-
   };
 }
