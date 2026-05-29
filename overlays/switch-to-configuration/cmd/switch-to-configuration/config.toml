@@ -1,0 +1,7 @@
+installation_dir = "/data/data/com.termux.nix/files/usr"
+
+[process_compose]
+binary_path = "/nix/store/6y7zn1hzqz9w2prrihzg3fiazhaqaa98-process-compose-1.110.0/bin/process-compose"
+config_path = "/nix/store/rd6r2rs7fgx49s2lri2bg11r19qjdi26-process-compose.yaml"
+enable = true
+extra_args = ["--disable-dotenv", "--no-server", "--read-only", "-t=false"]

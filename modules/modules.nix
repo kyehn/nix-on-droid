@@ -19,13 +19,18 @@
     lib.replaceStrings
       [
         ''
-          ${"    "}systemd.globalEnvironment = lib.mkIf (config.i18n.supportedLocales != [ ]) {
-          ${"      "}LOCALE_ARCHIVE = "''${config.i18n.glibcLocales}/lib/locale/locale-archive";
+          ${"    "}systemd.globalEnvironment = lib.mkIf (cfg.glibcLocales != null && cfg.supportedLocales != [ ]) {
+          ${"      "}LOCALE_ARCHIVE = "''${cfg.glibcLocales}/lib/locale/locale-archive";
           ${"    "}};
         ''
         ''LOCALE_ARCHIVE = "/run/current-system/sw/lib/locale/locale-archive";''
+        ''
+          ${"    "}systemd.tmpfiles.rules = lib.mkIf cfg.imperativeLocale [
+          ${"      "}"C /etc/locale.conf - - - - ''${localeConf}"
+          ${"    "}];
+        ''
       ]
-      [ "" ''LOCALE_ARCHIVE = "''${config.i18n.glibcLocales}/lib/locale/locale-archive";'' ]
+      [ "" ''LOCALE_ARCHIVE = "''${config.i18n.glibcLocales}/lib/locale/locale-archive";'' "" ]
       (builtins.readFile (pkgs.path + "/nixos/modules/config/i18n.nix"))
   ))
   (builtins.toFile "locale.nix" (
@@ -117,13 +122,52 @@
       builtins.readFile (pkgs.path + "/nixos/modules/misc/label.nix")
     )
   ))
+  (builtins.toFile "icons.nix" (
+    lib.replaceStrings
+      [
+        ''
+          ${"    "}xdg.icons.fallbackCursorThemes = lib.mkOption {
+          ${"      "}type = lib.types.listOf lib.types.str;
+          ${"      "}default = [ ];
+          ${"      "}description = ${"''"}
+          ${"        "}Names of the fallback cursor themes, in order of preference, to be used when no other icon source can be found.
+          ${"        "}Set to `[]` to disable the fallback entirely.
+          ${"      "}${"''"};
+          ${"    "}};
+        ''
+        ''
+          ${"    "}]
+          ${"    "}++ lib.optionals (config.xdg.icons.fallbackCursorThemes != [ ]) [
+          ${"      "}(pkgs.writeTextFile {
+          ${"        "}name = "fallback-cursor-theme";
+          ${"        "}text = ${"''"}
+          ${"          "}[Icon Theme]
+          ${"          "}Inherits=''${lib.concatStringsSep "," config.xdg.icons.fallbackCursorThemes}
+          ${"        "}${"''"};
+          ${"        "}destination = "/share/icons/default/index.theme";
+          ${"      "}})
+        ''
+        ''
+          ${"    "}environment.sessionVariables.XCURSOR_PATH = [
+          ${"      "}"$HOME/.icons"
+          ${"      "}"$HOME/.local/share/icons"
+          ${"    "}];
+
+          ${"    "}environment.profileRelativeSessionVariables.XCURSOR_PATH = [
+          ${"      "}"/share/icons"
+          ${"      "}"/share/pixmaps"
+          ${"    "}];
+        ''
+      ]
+      [ "" "" "" ]
+      (builtins.readFile (pkgs.path + "/nixos/modules/config/xdg/icons.nix"))
+  ))
   (pkgs.path + "/nixos/modules/config/networking.nix")
   (pkgs.path + "/nixos/modules/misc/assertions.nix")
   (pkgs.path + "/nixos/modules/programs/less.nix")
   (pkgs.path + "/modules/generic/meta-maintainers.nix")
   (pkgs.path + "/nixos/modules/misc/ids.nix")
   (pkgs.path + "/nixos/modules/config/nsswitch.nix")
-  (pkgs.path + "/nixos/modules/config/xdg/icons.nix")
   (pkgs.path + "/nixos/modules/config/xdg/mime.nix")
   (pkgs.path + "/nixos/modules/config/xdg/terminal-exec.nix")
   (pkgs.path + "/nixos/modules/config/appstream.nix")

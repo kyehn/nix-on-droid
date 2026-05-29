@@ -8,6 +8,7 @@
     nix-on-droid = {
       url = "github:kyehn/nix-on-droid/unstable";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-parts.follows = "flake-parts";
     };
     home-manager = {
       url = "github:nix-community/home-manager";

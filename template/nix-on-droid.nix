@@ -20,7 +20,7 @@
       {
         home = {
           enableNixpkgsReleaseCheck = false;
-          stateVersion = lib.trivial.release;
+          stateVersion = "26.05";
         };
         systemd.user.enable = false;
         programs.man = {

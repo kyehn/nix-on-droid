@@ -10,7 +10,6 @@ let
 in
 {
   config = {
-    home-manager.extraSpecialArgs.nixosConfig = config;
     programs.switch-to-configuration.process-compose.config.processes.home-manager = {
       environment = [
         "HOME=${config.users.users.nix-on-droid.home}"
