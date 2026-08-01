@@ -143,7 +143,7 @@ in
                 "id"
                 "-u"
               ];
-          home = "/data/data/com.termux.nix/files/home";
+          home = lib.mkDefault "/data/data/com.termux.nix/files/home";
           group = "nix-on-droid";
         };
       };

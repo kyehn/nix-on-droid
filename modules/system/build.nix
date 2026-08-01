@@ -16,7 +16,6 @@
     installationDir = lib.mkOption {
       type = lib.types.path;
       default = "/data/data/com.termux.nix/files/usr";
-      readOnly = true;
       description = "Base directory for Nix-on-Droid installation.";
     };
     proot = {

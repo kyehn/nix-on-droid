@@ -7,13 +7,13 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "proot-termux";
-  version = "0-unstable-2026-05-10";
+  version = "0-unstable-2026-07-10";
 
   src = fetchFromGitHub {
     repo = "proot";
     owner = "termux";
-    rev = "ee10b279a38d34b6704345bc448d18f019ca1b49";
-    hash = "sha256-WyOcnImX5Gyn8rvSdsYz2VEFXNs0hwtbcEDWzCWUf1E=";
+    rev = "87af48f58b752268cc4f93f251a9ca84e94c5655";
+    hash = "sha256-ryqhMCOoPwJhqLXItQ34x+/v1Mvj0QcvxKYpv4Stu7s=";
   };
 
   patches = [
@@ -65,6 +65,20 @@ stdenv.mkDerivation (finalAttrs: {
         exit 1
       fi
     ''
+    # --- Add fchmodat2 syscall number to all architecture tables ---
+    # The syscall-support-fchmodat2.patch handles enter.c, seccomp.c, and
+    # sysnums.list, but the sysnums*.h patches fail because upstream changed
+    # indentation (spaces -> tabs) and added new entries.  Use sed with a
+    # shell-embedded tab ($(printf '\t')) to avoid regex escaping issues.
+    + ''
+      tab=$(printf '\t')
+      sed -i "/^''${tab}\[ 437 \] = PR_openat2,$/a''${tab}[ 452 ] = PR_fchmodat2," src/syscall/sysnums-arm.h
+      sed -i "/^''${tab}\[ 439 \] = PR_faccessat2,$/a''${tab}[ 452 ] = PR_fchmodat2," src/syscall/sysnums-arm64.h
+      sed -i "/^''${tab}\[ 439 \] = PR_faccessat2,$/a''${tab}[ 452 ] = PR_fchmodat2," src/syscall/sysnums-sh4.h
+      sed -i "/^''${tab}\[ 437 \] = PR_openat2,$/a''${tab}[ 452 ] = PR_fchmodat2," src/syscall/sysnums-x32.h
+      sed -i "/^''${tab}\[ 439 \] = PR_faccessat2,$/a''${tab}[ 452 ] = PR_fchmodat2," src/syscall/sysnums-x86_64.h
+    ''
+
     # --- Prevent 128GB loader bloat on AArch64 (LLVM 17 -> 21 regression) ---
     # Core Fix: Only apply the -n linker flag and p_align patch on AArch64.
     # Applying `-n` on x86_64 breaks the ELF loader segment layout and causes SIGSEGV (signal 11).

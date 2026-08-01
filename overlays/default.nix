@@ -33,8 +33,6 @@ in
       substituteInPlace crates/smfh-core/src/file_util.rs \
         --replace-fail "if self.uid.is_some() || self.gid.is_some() {" "if false && (self.uid.is_some() || self.gid.is_some()) {" \
         --replace-fail "fs::symlink_metadata(source).is_ok_and" "fs::metadata(source).is_ok_and"
-      substituteInPlace crates/smfh-core/src/manifest.rs \
-        --replace-fail "let res = atomic.atomic_activate().inspect_err(|err| {" "let res = atomic.activate(self.clobber_by_default, prefix).map(|_| true).inspect_err(|err| {"
     '';
   });
   process-compose = prev.process-compose.overrideAttrs (oldAttrs: {

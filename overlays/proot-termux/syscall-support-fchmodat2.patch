@@ -4,15 +4,10 @@ Date: Fri, 15 May 2026 10:20:26 +0000
 Subject: [PATCH] syscall: support fchmodat2
 
 ---
- src/syscall/enter.c          | 4 ++++
- src/syscall/seccomp.c        | 1 +
- src/syscall/sysnums-arm.h    | 1 +
- src/syscall/sysnums-arm64.h  | 1 +
- src/syscall/sysnums-sh4.h    | 1 +
- src/syscall/sysnums-x32.h    | 1 +
- src/syscall/sysnums-x86_64.h | 1 +
- src/syscall/sysnums.list     | 1 +
- 8 files changed, 11 insertions(+)
+ src/syscall/enter.c   | 4 ++++
+ src/syscall/seccomp.c | 1 +
+ src/syscall/sysnums.list | 1 +
+ 3 files changed, 6 insertions(+)
 
 diff --git a/src/syscall/enter.c b/src/syscall/enter.c
 index 50f1543..04efdbe 100644
@@ -20,7 +15,7 @@ index 50f1543..04efdbe 100644
 +++ b/src/syscall/enter.c
 @@ -438,10 +438,14 @@ int translate_syscall_enter(Tracee *tracee)
  		break;
- 
+
  	case PR_fchmodat:
 +	case PR_fchmodat2:
  	case PR_faccessat:
@@ -31,7 +26,7 @@ index 50f1543..04efdbe 100644
 +			? peek_reg(tracee, CURRENT, SYSARG_3)
 +			: 0;
  		dirfd = peek_reg(tracee, CURRENT, SYSARG_1);
- 
+
  		status = get_sysarg_path(tracee, path, SYSARG_2);
 diff --git a/src/syscall/seccomp.c b/src/syscall/seccomp.c
 index ee96143..433978e 100644
@@ -45,58 +40,6 @@ index ee96143..433978e 100644
  	{ PR_fchownat,		0 },
  	{ PR_fstatat64,		0 },
  	{ PR_futimesat,		0 },
-diff --git a/src/syscall/sysnums-arm.h b/src/syscall/sysnums-arm.h
-index 0503fdd..34e53a5 100644
---- a/src/syscall/sysnums-arm.h
-+++ b/src/syscall/sysnums-arm.h
-@@ -358,4 +358,5 @@ static const Sysnum sysnums_arm[] = {
- 	[ 397 ] = PR_statx,
- 	[ 439 ] = PR_faccessat2,
- 	[ 435 ] = PR_clone3,
-+	[ 452 ] = PR_fchmodat2,
- };
-diff --git a/src/syscall/sysnums-arm64.h b/src/syscall/sysnums-arm64.h
-index 751382f..c6abb14 100644
---- a/src/syscall/sysnums-arm64.h
-+++ b/src/syscall/sysnums-arm64.h
-@@ -280,4 +280,5 @@ static const Sysnum sysnums_arm64[] = {
- 	[ 291 ] = PR_statx,
- 	[ 435 ] = PR_clone3,
- 	[ 439 ] = PR_faccessat2,
-+	[ 452 ] = PR_fchmodat2,
- };
-diff --git a/src/syscall/sysnums-sh4.h b/src/syscall/sysnums-sh4.h
-index 048fd97..de2293b 100644
---- a/src/syscall/sysnums-sh4.h
-+++ b/src/syscall/sysnums-sh4.h
-@@ -341,4 +341,5 @@ static const Sysnum sysnums_sh4[] = {
- 	[ 366 ] = PR_process_vm_writev,
- 	[ 435 ] = PR_clone3,
- 	[ 439 ] = PR_faccessat2,
-+	[ 452 ] = PR_fchmodat2,
- };
-diff --git a/src/syscall/sysnums-x32.h b/src/syscall/sysnums-x32.h
-index 25ac16e..8260f06 100644
---- a/src/syscall/sysnums-x32.h
-+++ b/src/syscall/sysnums-x32.h
-@@ -274,6 +274,7 @@ static const Sysnum sysnums_x32[] = {
- 	[ 312 ] = PR_kcmp,
- 	[ 316 ] = PR_renameat2,
- 	[ 435 ] = PR_clone3,
-+	[ 452 ] = PR_fchmodat2,
- 	[ 512 ] = PR_rt_sigaction,
- 	[ 513 ] = PR_rt_sigreturn,
- 	[ 514 ] = PR_ioctl,
-diff --git a/src/syscall/sysnums-x86_64.h b/src/syscall/sysnums-x86_64.h
-index a79edd0..34921ca 100644
---- a/src/syscall/sysnums-x86_64.h
-+++ b/src/syscall/sysnums-x86_64.h
-@@ -336,4 +336,5 @@ static const Sysnum sysnums_x86_64[] = {
- 	[ 332 ] = PR_statx,
-         [ 435 ] = PR_clone3,
- 	[ 439 ] = PR_faccessat2,
-+	[ 452 ] = PR_fchmodat2,
- };
 diff --git a/src/syscall/sysnums.list b/src/syscall/sysnums.list
 index 8170b6e..158373e 100644
 --- a/src/syscall/sysnums.list
@@ -109,6 +52,5 @@ index 8170b6e..158373e 100644
  SYSNUM(fchown)
  SYSNUM(fchown32)
  SYSNUM(fchownat)
--- 
+--
 2.53.0
-

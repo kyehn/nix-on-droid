@@ -12,7 +12,7 @@ BASH_BIN=$(${NIX_BUILD[@]} .#pkgsStatic.bash.out)/bin/bash
 BSDTAR_BIN=$(${NIX_BUILD[@]} .#libarchive.out)/bin/bsdtar
 SED_BIN=$(${NIX_BUILD[@]} .#pkgsStatic.gnused.out)/bin/sed
 BWRAP_BIN=$(${NIX_BUILD[@]} .#bubblewrap.out)/bin/bwrap
-PROCPS=$(${NIX_BUILD[@]} .#pkgsStatic.procps)
+PROCPS=$(${NIX_BUILD[@]} .#pkgsStatic.procps.out)
 COREUTILS=$(${NIX_BUILD[@]} .#pkgsStatic.coreutils.out)
 BOOTSTRAP_ZIP=$(find "$(${NIX_BUILD[@]} .#bootstrap-zip)" -maxdepth 1 -name "*.zip" -type f 2>/dev/null | head -n1)
 
