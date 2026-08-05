@@ -10,7 +10,6 @@ on:
         options:
           - ""
           - bootstrap-unstable
-          - 0.1.0
 permissions:
   contents: write
 jobs:
@@ -66,7 +65,7 @@ jobs:
           if-no-files-found: warn
       - if: ${{ inputs.release_tag_name != '' }}
         run: |
-          git tag -f ${{ inputs.release_tag_name }}
+          git tag --force ${{ inputs.release_tag_name }}
           git push origin ${{ inputs.release_tag_name }} --force
       - uses: softprops/action-gh-release@master
         if: ${{ inputs.release_tag_name != '' }}

@@ -3,7 +3,7 @@ set -euo pipefail
 
 : "${DROID_UID:=10377}"
 : "${DROID_GID:=10377}"
-: "${PACKAGE_NAME:=com.termux.nix}"
+: "${PACKAGE_NAME:=com.termux}"
 : "${APP_FILES:=/data/data/${PACKAGE_NAME}/files}"
 : "${INSTALLATION_DIR:=${APP_FILES}/usr}"
 

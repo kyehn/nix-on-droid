@@ -60,6 +60,10 @@
 
           legacyPackages = pkgs;
 
+          packages = {
+            inherit (pkgs) proot-termux;
+          };
+
           formatter = pkgs.nixfmt-tree.override {
             nixfmtPackage = pkgs.nixfmt-rs;
             runtimeInputs = with pkgs; [
