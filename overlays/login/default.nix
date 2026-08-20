@@ -1,13 +1,15 @@
 {
   config,
   lib,
+  stdenvNoCC,
+  formats,
   buildGoModule,
   process-compose,
-  formats,
+  nix,
 }:
 
 buildGoModule (finalAttrs: {
-  pname = "switch-to-configuration";
+  pname = "login";
   version = "0.1.0";
   __structuredAttrs = true;
   strictDeps = true;
@@ -15,31 +17,35 @@ buildGoModule (finalAttrs: {
   src = lib.fileset.toSource {
     root = ./.;
     fileset = lib.fileset.unions [
-      ./go.sum
       ./go.mod
+      ./go.sum
       ./cmd
     ];
   };
 
-  vendorHash = "sha256-/Ox7fGsUo1dORSqxuuFTbKb89Y/ZjTlEwpBLqcAVfDk=";
+  vendorHash = "sha256-QjwNcCHVuQtGB0kyy/Q3BXlwR+pkwZ3sq9XgrzkS2bQ=";
 
-  subPackages = [ "cmd/switch-to-configuration" ];
+  subPackages = [ "cmd/login" ];
 
   env.CGO_ENABLED = 0;
 
   preBuild = ''
     cp ${
       (formats.toml { }).generate "config.toml" {
+        user = {
+          inherit (config.users.users.root) name home shell;
+        };
+        environment = lib.mapAttrsToList (name: value: {
+          inherit name value;
+        }) config.system.build.environmentVariables;
         process_compose = {
           enable =
             let
-              processes = config.programs.switch-to-configuration.process-compose.config.processes;
+              processes = config.programs.process-compose.config.processes;
             in
             (processes != null && processes != { });
           binary_path = lib.getExe process-compose;
-          config_path =
-            (formats.yaml { }).generate "process-compose.yaml"
-              config.programs.switch-to-configuration.process-compose.config;
+          config_path = config.programs.process-compose.configFile;
           extra_args = [
             "--disable-dotenv"
             "--no-server"
@@ -48,8 +54,8 @@ buildGoModule (finalAttrs: {
           ];
         };
       }
-    } cmd/switch-to-configuration/config.toml
+    } cmd/login/config.toml
   '';
 
-  meta.mainProgram = "switch-to-configuration";
+  meta.mainProgram = "login";
 })

@@ -60,18 +60,11 @@
 
           legacyPackages = pkgs;
 
-          packages = {
-            inherit (pkgs) proot-termux;
-          };
-
           formatter = pkgs.nixfmt-tree.override {
             nixfmtPackage = pkgs.nixfmt-rs;
             runtimeInputs = with pkgs; [
               yamlfmt
               shfmt
-              rustfmt
-              taplo
-              ruff
               go
               gofumpt
               gotools
@@ -93,31 +86,6 @@
                   "*.bash"
                   "*.envrc"
                   "*.envrc.*"
-                ];
-              };
-              rustfmt = {
-                command = "rustfmt";
-                options = [
-                  "--config"
-                  "skip_children=true"
-                  "--edition"
-                  "2024"
-                  "--style-edition"
-                  "2024"
-                ];
-                includes = [ "*.rs" ];
-              };
-              taplo = {
-                command = "taplo";
-                options = [ "format" ];
-                includes = [ "*.toml" ];
-              };
-              ruff = {
-                command = "ruff";
-                options = [ "format" ];
-                includes = [
-                  "*.py"
-                  "*.pyi"
                 ];
               };
               gofmt = {
@@ -149,7 +117,7 @@
                 command = "revive";
                 options = [
                   "-config"
-                  ./tests/.revive.toml
+                  ./overlays/.revive.toml
                   "-set_exit_status"
                 ];
                 includes = [ "*.go" ];

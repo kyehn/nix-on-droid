@@ -11,7 +11,8 @@ let
     lib.last (lib.splitString "/" pkgs.stdenv.cc.bintools.dynamicLinker)
   );
 
-  # Hard-code to avoid creating another instance of nixpkgs. Also avoids eval errors in some cases.
+  # Hard-code to avoid creating another instance of nixpkgs. Also avoids eval
+  # errors in some cases.
   libDir32 = "lib"; # pkgs.pkgsi686Linux.stdenv.hostPlatform.libDir
   ldsoBasename32 = "ld-linux.so.2"; # last (splitString "/" pkgs.pkgsi686Linux.stdenv.cc.bintools.dynamicLinker)
 in
@@ -43,29 +44,5 @@ in
         message = "Option environment.ldso32 currently only works on x86_64.";
       }
     ];
-
-    system.build.proot.bind =
-      (
-        if isNull config.environment.ldso then
-          [ ]
-        else
-          [
-            {
-              host_path = "${config.system.build.installationDir}${config.environment.ldso}";
-              guest_location = "/${libDir}/${ldsoBasename}";
-            }
-          ]
-      )
-      ++ lib.optionals pkgs.stdenv.hostPlatform.isx86_64 (
-        if isNull config.environment.ldso32 then
-          [ ]
-        else
-          [
-            {
-              host_path = "${config.system.build.installationDir}${config.environment.ldso32}";
-              guest_location = "/${libDir32}/${ldsoBasename32}";
-            }
-          ]
-      );
   };
 }

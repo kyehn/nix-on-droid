@@ -1,0 +1,45 @@
+name: build-userland
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag_name:
+        description: release tag name
+        required: false
+        default: ""
+        type: choice
+        options:
+          - ""
+          - userland-unstable
+permissions:
+  contents: write
+jobs:
+  build-userland:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@main
+      - uses: actions/checkout@main
+        with:
+          repository: ${{ github.actor }}/kudzu
+          path: result-kudzu
+      - uses: ./result-kudzu/.github/actions/install-nix
+      - uses: cachix/cachix-action@master
+        with:
+          name: ${{ secrets.CACHIX_NAME }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - run: |
+          rm --force ~/.config/nix/nix.conf
+          nix build --verbose --print-build-logs --impure --print-out-paths ./template#nixosConfigurations.default.config.system.build.toplevel --override-input nix-on-droid path:.
+          nix build --verbose --print-build-logs --impure --print-out-paths .#userland-archive
+      - run: |
+          WORK=$(mktemp --directory --tmpdir userland.XXXXXXXXXX)
+          tar -xf "result/userland.tar.xz" --directory "$WORK"
+          sudo chroot "$WORK" /bin/bash -l
+      - if: ${{ inputs.release_tag_name != '' }}
+        run: |
+          git tag --force ${{ inputs.release_tag_name }}
+          git push origin ${{ inputs.release_tag_name }} --force
+      - uses: softprops/action-gh-release@master
+        if: ${{ inputs.release_tag_name != '' }}
+        with:
+          tag_name: ${{ inputs.release_tag_name }}
+          files: result/userland.tar.xz
