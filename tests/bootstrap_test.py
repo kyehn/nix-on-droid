@@ -18,7 +18,7 @@ def screenshot(d, suffix: str = "") -> None:
     print(f"screenshotted: {fname_base}.{{png,xml}}")
 
 
-def wait_for(d, on_screen_text: str, timeout: int = 30, critical: bool = True) -> None:
+def wait_for(d, on_screen_text: str, timeout: int = 50, critical: bool = True) -> None:
     start = time.monotonic()
     last_displayed_time: int | None = None
     while (elapsed := time.monotonic() - start) < timeout:

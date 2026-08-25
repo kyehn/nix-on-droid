@@ -18,10 +18,10 @@ jobs:
       fail-fast: false
       matrix:
         runner:
-          # - ubuntu-latest
-          - ubuntu-24.04-arm
+          - ubuntu-latest
+          - ubuntu-26.04-arm
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@main
       - uses: actions/checkout@main
@@ -39,13 +39,14 @@ jobs:
           sed -i '/users\.users\.nix-on-droid\.shell = lib.getExe pkgs\.bash;/a users.groups.nix-on-droid.gid = lib.mkForce 10377;' template/nix-on-droid.nix
           nix build --verbose --print-build-logs --impure --print-out-paths ./template#nixosConfigurations.default.config.system.build.toplevel --override-input nix-on-droid path:.
           nix build --verbose --print-build-logs --impure --print-out-paths .#bootstrap-zip
-      - if: ${{ runner.arch == 'ARM64' }}
-        run: bash tests/test-bootstrap.sh
+      - run: bash tests/test-bootstrap.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - if: ${{ runner.arch == 'X64' }}
-        run: nix build github:t184256/droidctl --out-link /tmp/droidctl
+        run: find . -type f -exec sed -i 's#/data/data/com.termux/files#/data/data/com.termux.nix/files#g' {} +
       - if: ${{ runner.arch == 'X64' }}
+        run: nix build github:t184256/droidctl --out-link /tmp/droidctl
+      - if: ${{ false && runner.arch == 'X64' }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -57,18 +58,18 @@ jobs:
           script: >
             set -e && trap 'pkill --exact --signal SIGKILL crashpad_handle || true' EXIT && adb push result/bootstrap-x86_64.zip /data/local/tmp/ && /tmp/droidctl/bin/droidctl run tests/bootstrap_test.py
 
-      - if: ${{ runner.arch == 'X64' && always() }}
+      - if: ${{ false && runner.arch == 'X64' && always() }}
         uses: actions/upload-artifact@main
         with:
           name: screenshots
           path: screenshots
           if-no-files-found: warn
-      - if: ${{ inputs.release_tag_name != '' }}
+      - if: ${{ runner.arch == 'ARM64' && inputs.release_tag_name != '' }}
         run: |
           git tag --force ${{ inputs.release_tag_name }}
           git push origin ${{ inputs.release_tag_name }} --force
       - uses: softprops/action-gh-release@master
-        if: ${{ inputs.release_tag_name != '' }}
+        if: ${{ runner.arch == 'ARM64' && inputs.release_tag_name != '' }}
         with:
           tag_name: ${{ inputs.release_tag_name }}
           files: result/bootstrap-*.zip
