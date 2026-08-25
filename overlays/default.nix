@@ -8,26 +8,21 @@ let
     inherit inputs;
     pkgs = prev.extend (
       _: _: {
-        inherit (final) proot-termux;
+        inherit (final) login switch-to-configuration;
       }
     );
 
-    configuration.config.system.build.bootstrapBuild = true;
+    configuration.config.system.build.userlandBuild = true;
   };
 in
 {
-  bootstrapClosureInfo = prev.closureInfo {
+  userlandClosureInfo = prev.closureInfo {
     rootPaths = [ modules.config.system.build.toplevel ];
   };
-  session-login = prev.callPackage ./session-login { inherit (modules) config; };
-  session-login-inner = prev.callPackage ./session-login-inner {
+  login = prev.callPackage ./login {
     inherit (modules) config;
   };
   switch-to-configuration = prev.callPackage ./switch-to-configuration { inherit (modules) config; };
-  proot-termux = prev.pkgsStatic.pkgsLLVM.callPackage ./proot-termux {
-    talloc = prev.pkgsStatic.pkgsLLVM.callPackage ./talloc.nix { };
-    stdenv = prev.pkgsStatic.pkgsLLVM.stdenvAdapters.makeStaticBinaries prev.pkgsStatic.pkgsLLVM.stdenv;
-  };
   smfh = prev.smfh.overrideAttrs (oldAttrs: {
     postPatch = (oldAttrs.postPatch or "") + ''
       substituteInPlace crates/smfh-core/src/file_util.rs \
@@ -42,8 +37,8 @@ in
         --replace-fail 'log.Debug().Err(err).Msg("Path not found for process compose config home")' 'if err == nil && xdgPcHome == "" { return "" }'
     '';
   });
-  bootstrap = prev.callPackage ./bootstrap.nix {
+  userland = prev.callPackage ./userland.nix {
     inherit (modules) config;
   };
-  bootstrap-zip = prev.callPackage ./bootstrap-zip.nix { };
+  userland-archive = prev.callPackage ./userland-archive.nix { };
 }
