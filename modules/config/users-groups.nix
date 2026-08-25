@@ -128,18 +128,42 @@ in
 
   config = {
     users = {
-      users.root = {
-        uid = config.ids.uids.root;
-        home = "/root";
-        group = "root";
+      users = {
+        root = {
+          uid = config.ids.uids.root;
+          home = "/root";
+          group = "root";
+        };
+        nix-on-droid = {
+          uid =
+            if config.system.build.bootstrapBuild then
+              65534
+            else
+              builtins.exec [
+                "id"
+                "-u"
+              ];
+          home = lib.mkDefault "/data/data/com.termux/files/home";
+          group = "nix-on-droid";
+        };
       };
-      groups.root.gid = config.ids.gids.root;
+      groups = {
+        root.gid = config.ids.gids.root;
+        nix-on-droid.gid =
+          if config.system.build.bootstrapBuild then
+            65534
+          else
+            builtins.exec [
+              "id"
+              "-g"
+            ];
+      };
     };
     environment = {
       profiles = [
-        "${config.users.users.root.home}/.nix-profile"
-        "${config.users.users.root.home}/.local/state/nix/profile"
-        "/etc/profiles/per-user/${config.users.users.root.name}"
+        "${config.users.users.nix-on-droid.home}/.nix-profile"
+        "${config.users.users.nix-on-droid.home}/.local/state/nix/profile"
+        "/etc/profiles/per-user/${config.users.users.nix-on-droid.name}"
       ];
       etc =
         (lib.mapAttrs' (

@@ -1,0 +1,50 @@
+installation_dir = "/data/data/com.termux.nix/files/usr"
+login_inner_binary_path = "/data/data/com.termux.nix/files/usr/bin/login-inner"
+pending_artifacts = [
+  "/data/data/com.termux.nix/files/usr/bin/proot",
+  "/data/data/com.termux.nix/files/usr/bin/login-inner",
+]
+
+[proot]
+binary_path = "/data/data/com.termux.nix/files/usr/bin/proot"
+extra_args = ["--link2symlink", "--sysvipc"]
+
+[[proot.bind]]
+guest_location = "/nix"
+host_path = "/data/data/com.termux.nix/files/usr/nix"
+
+[[proot.bind]]
+guest_location = "/bin!"
+host_path = "/data/data/com.termux.nix/files/usr/bin"
+
+[[proot.bind]]
+guest_location = "/etc!"
+host_path = "/data/data/com.termux.nix/files/usr/etc"
+
+[[proot.bind]]
+guest_location = "/tmp"
+host_path = "/data/data/com.termux.nix/files/usr/tmp"
+
+[[proot.bind]]
+guest_location = "/usr"
+host_path = "/data/data/com.termux.nix/files/usr/usr"
+
+[[proot.bind]]
+guest_location = "/dev/shm"
+host_path = "/data/data/com.termux.nix/files/usr/dev/shm"
+
+[[proot.bind]]
+guest_location = "/dev/pts"
+host_path = "/dev/pts"
+
+[[proot.bind]]
+guest_location = "/proc/stat"
+host_path = "/data/data/com.termux.nix/files/usr/nix/store/zggyxlm3w3dvb760lf2riqc96sq689g6-fakeProcStat"
+
+[[proot.bind]]
+guest_location = "/proc/uptime"
+host_path = "/data/data/com.termux.nix/files/usr/nix/store/bi793vy1043cz4g5s6b705inz1lpvxr5-fakeProcUptime"
+
+[user]
+home = "/data/data/com.termux.nix/files/home"
+name = "nix-on-droid"

@@ -41,7 +41,8 @@ func init() {
 }
 
 type Config struct {
-	ProcessCompose struct {
+	InstallationDir string `mapstructure:"installation_dir"`
+	ProcessCompose  struct {
 		Enable     bool     `mapstructure:"enable"`
 		BinaryPath string   `mapstructure:"binary_path"`
 		ConfigPath string   `mapstructure:"config_path"`
@@ -128,7 +129,7 @@ func doSystemSwitch(ctx context.Context, cmd *cli.Command) error {
 		}
 		toplevel = filepath.Dir(binDir)
 	}
-	path := filepath.Join("/run", "current-system")
+	path := filepath.Join(cfg.InstallationDir, "run", "current-system")
 	_, err := os.Stat(path)
 	if err == nil {
 		oldToplevel := path
@@ -139,7 +140,7 @@ func doSystemSwitch(ctx context.Context, cmd *cli.Command) error {
 	}
 	action := cmd.Name
 	dryRun := action == "dry-activate"
-	baseDir := filepath.Join("/run", "nixos")
+	baseDir := filepath.Join(cfg.InstallationDir, "run", "nixos")
 	if err := os.MkdirAll(baseDir, 0o755); err != nil {
 		return eris.Wrap(err, "failed to create run/nixos directory")
 	}
@@ -169,11 +170,11 @@ func doSystemSwitch(ctx context.Context, cmd *cli.Command) error {
 		}
 	}
 	if !dryRun {
-		if err := symlinkForceSafe(toplevel, filepath.Join("/run", "current-system")); err != nil {
+		if err := symlinkForceSafe(toplevel, filepath.Join(cfg.InstallationDir, "run", "current-system")); err != nil {
 			sugar.Error("set /run/current-system failed")
 			return err
 		}
-		if err := symlinkForceSafe(toplevel, filepath.Join("/run", "booted-system")); err != nil {
+		if err := symlinkForceSafe(toplevel, filepath.Join(cfg.InstallationDir, "run", "booted-system")); err != nil {
 			sugar.Error("set /run/booted-system failed")
 			return err
 		}
@@ -184,10 +185,10 @@ func doSystemSwitch(ctx context.Context, cmd *cli.Command) error {
 			sugar.Error("set /nix/var/nix/gcroots/current-system failed")
 			return err
 		}
-		if err := os.MkdirAll(filepath.Join("/var", "empty"), 0o555); err != nil {
+		if err := os.MkdirAll(filepath.Join(cfg.InstallationDir, "var", "empty"), 0o555); err != nil {
 			return eris.Wrap(err, "failed to create /var/empty directory")
 		}
-		if err := os.Chmod(filepath.Join("/var/empty"), 0o555); err != nil {
+		if err := os.Chmod(filepath.Join(cfg.InstallationDir, "var/empty"), 0o555); err != nil {
 			return eris.Wrap(err, "failed to set permissions on /var/empty directory")
 		}
 	}
