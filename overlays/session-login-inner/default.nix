@@ -30,6 +30,7 @@ buildGoModule (finalAttrs: {
   env.CGO_ENABLED = 0;
 
   preBuild = ''
+    export GOFLAGS="-buildmode=pie $GOFLAGS"
     cp ${
       (formats.toml { }).generate "config.toml" {
         installation_dir = config.system.build.installationDir;
@@ -55,7 +56,7 @@ buildGoModule (finalAttrs: {
           ];
         };
         first_run = {
-          enable = config.system.build.bootstrapBuild;
+          enable = false;
           environment = [
             {
               name = "GC_NPROCS";

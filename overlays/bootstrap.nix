@@ -42,8 +42,13 @@ runCommand "bootstrap"
 
     find "$out" -type l -printf '%P\n' | while read -r rel; do
       target=$(readlink "$out/$rel")
-      clean_target=$(echo "$target" | sed "s|^$out||")
-      echo "''${clean_target}←''${rel}"
+      case "$target" in
+        "$out"/*) target=$(realpath -s -m --relative-to="$out/$(dirname "$rel")" "$target") ;;
+        /*)
+          target=$(realpath -s -m --relative-to="$out/$(dirname "$rel")" "$out$target")
+          ;;
+      esac
+      echo "''${target}←''${rel}"
       rm "$out/$rel"
     done > "$out/SYMLINKS.txt"
   ''

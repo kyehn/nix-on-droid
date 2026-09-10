@@ -32,6 +32,7 @@ buildGoModule (finalAttrs: {
   env.CGO_ENABLED = 0;
 
   preBuild = ''
+    export GOFLAGS="-buildmode=pie $GOFLAGS"
     cp ${
       (formats.toml { }).generate "config.toml" {
         inherit login_inner_binary_path;
