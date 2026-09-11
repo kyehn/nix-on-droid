@@ -28,6 +28,8 @@ jobs:
       - run: rm -f ~/.config/nix/nix.conf
       - run: |
           nix flake update
+          nix run nixpkgs#nix-update -- --build --version=branch proot-termux --flake
+          nix build --impure --print-out-paths .#proot-termux
       - if: ${{ runner.arch == 'ARM64' }}
         run: |
           nix fmt

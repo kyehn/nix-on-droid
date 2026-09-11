@@ -30,6 +30,7 @@ buildGoModule (finalAttrs: {
   preBuild = ''
     cp ${
       (formats.toml { }).generate "config.toml" {
+        installation_dir = config.system.build.installationDir;
         process_compose = {
           enable =
             let

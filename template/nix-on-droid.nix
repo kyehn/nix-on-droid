@@ -10,12 +10,12 @@
     sessionVariables.EDITOR = "hx";
   };
 
-  users.users.root.shell = lib.getExe pkgs.bash;
+  users.users.nix-on-droid.shell = lib.getExe pkgs.bash;
 
   home-manager = {
     useGlobalPkgs = true;
 
-    users.root =
+    users.nix-on-droid =
       { lib, ... }:
       {
         home = {
