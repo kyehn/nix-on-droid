@@ -119,7 +119,7 @@
         inherit (file) uid gid;
         type =
           if
-            ((file.mode == "symlink" || file.mode == "direct-symlink") && (!config.system.build.bootstrapBuild))
+            ((file.mode == "symlink" || file.mode == "direct-symlink") && (!config.system.build.userlandBuild))
           then
             "symlink"
           else
@@ -134,7 +134,7 @@
           version = 3;
           clobber_by_default = true;
           files =
-            (lib.optionals (!config.system.build.bootstrapBuild) (
+            (lib.optionals (!config.system.build.userlandBuild) (
               [
                 {
                   type = "symlink";
@@ -159,7 +159,7 @@
                 file
                 // {
                   target =
-                    "${lib.optionalString config.system.build.bootstrapBuild "@out@"}/"
+                    "${lib.optionalString config.system.build.userlandBuild "@out@"}/"
                     + lib.removePrefix "/" file.target;
                 }
               )
@@ -179,7 +179,7 @@
       };
       programs.switch-to-configuration.process-compose.config.processes.smfh.command =
         let
-          stateDir = "${config.users.users.nix-on-droid.home}/.local/state/smfh";
+          stateDir = "${config.users.users.root.home}/.local/state/smfh";
           oldManifest = "${stateDir}/manifest.json";
           linker = lib.getExe pkgs.smfh;
         in

@@ -1,0 +1,39 @@
+name: build-apk
+on:
+  workflow_dispatch:
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@main
+        with:
+          repository: sylirre/ghostty-android-terminal
+          submodules: recursive
+      - uses: actions/checkout@main
+        with:
+          path: nix-on-droid
+      - run: |
+          git apply ./nix-on-droid/.github/ghostty-android-terminal.patch
+          rm -rf nix-on-droid
+      - uses: actions/setup-java@main
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@main
+      - run: |
+          git clone --depth 1 https://android.googlesource.com/platform/build "/tmp/platform-build"
+          openssl pkey -inform DER -in "/tmp/platform-build/target/product/security/testkey.pk8" -out "/tmp/testkey.pk8.pem"
+          openssl pkcs12 -export -in "/tmp/platform-build/target/product/security/testkey.x509.pem" -inkey "/tmp/testkey.pk8.pem" -out "app/aosp-testkey.p12" -password pass:android -name testkey
+          sudo apt update
+          sudo apt install -yq curl binfmt-support qemu-user-static
+          curl -L -o /tmp/mmdebstrap.deb http://ftp.us.debian.org/debian/pool/main/m/mmdebstrap/mmdebstrap_1.5.7-3_all.deb
+          curl -L -o /tmp/keyring.deb http://ftp.us.debian.org/debian/pool/main/d/debian-archive-keyring/debian-archive-keyring_2025.1_all.deb
+          sudo apt install -yq /tmp/mmdebstrap.deb /tmp/keyring.deb
+          ./scripts/build-debian-rootfs.sh
+          ./scripts/build-alpine-rootfs.sh
+          ./gradlew :app:assembleRelease
+      - uses: actions/upload-artifact@main
+        with:
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error

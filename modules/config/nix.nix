@@ -206,7 +206,6 @@ in
             sandbox = false;
             allow-unsafe-native-code-during-evaluation = true;
             trusted-users = [ ];
-            build-dir = "${config.system.build.installationDir}/build";
           }
         );
   };
