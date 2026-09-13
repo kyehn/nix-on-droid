@@ -153,11 +153,13 @@ in
   config = {
     environment = {
       sessionVariables = {
-        HOME = config.users.users.root.home;
-        USER = config.users.users.root.name;
+        HOME = config.users.users.nix-on-droid.home;
+        USER = config.users.users.nix-on-droid.name;
         GC_NPROCS = 1;
       };
       profileRelativeEnvVars = config.environment.profileRelativeSessionVariables;
+      # For resetting environment with `. /etc/set-environment` when needed
+      # and discoverability (see motivation of #30418).
       etc.set-environment.source = config.system.build.setEnvironment;
       files = {
         "bin/sh".source = cfg.binsh;
