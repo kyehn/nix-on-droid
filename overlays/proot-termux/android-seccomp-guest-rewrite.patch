@@ -12,7 +12,7 @@ index 5ade279..8cf46d5 100644
  	syscall/exit.o		\
 diff --git a/src/syscall/android_compat_syscalls.c b/src/syscall/android_compat_syscalls.c
 new file mode 100644
-index 0000000..bb017bd
+index 0000000..092b403
 --- /dev/null
 +++ b/src/syscall/android_compat_syscalls.c
 @@ -0,0 +1,389 @@
@@ -227,7 +227,7 @@ index 0000000..bb017bd
 +		 * the no-op result directly. */
 +		if (peek_reg(tracee, CURRENT, SYSARG_1) ==
 +		    peek_reg(tracee, CURRENT, SYSARG_2)) {
-+			poke_reg(tracee, RESULT, peek_reg(tracee, CURRENT, SYSARG_1));
++			poke_reg(tracee, SYSARG_RESULT, peek_reg(tracee, CURRENT, SYSARG_1));
 +			set_sysnum(tracee, PR_void);
 +			break;
 +		}
