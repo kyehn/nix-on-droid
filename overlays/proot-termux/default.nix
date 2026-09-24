@@ -22,6 +22,9 @@ stdenv.mkDerivation (finalAttrs: {
     # Android untrusted_app seccomp compatibility: proot's own blocked
     # libc calls (fork, access, mkdir, unlink, ...).
     ./android-seccomp-self-compat.patch
+    # ...and the enter-stop rewrite that converts guest syscalls the
+    # zygote KILL filter forbids before the filter ever evaluates them.
+    ./android-seccomp-guest-rewrite.patch
   ];
 
   # Apply source modifications to fix loader bloat, seccomp offsets, and 32-bit linker errors.

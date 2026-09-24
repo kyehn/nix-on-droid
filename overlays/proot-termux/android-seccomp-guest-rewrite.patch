@@ -1,0 +1,439 @@
+diff --git a/src/GNUmakefile b/src/GNUmakefile
+index 5ade279..8cf46d5 100644
+--- a/src/GNUmakefile
++++ b/src/GNUmakefile
+@@ -42,6 +42,7 @@ OBJECTS += \
+ 	path/temp.o		\
+ 	syscall/seccomp.o	\
+ 	syscall/syscall.o	\
++	syscall/android_compat_syscalls.o	\
+ 	syscall/chain.o		\
+ 	syscall/enter.o		\
+ 	syscall/exit.o		\
+diff --git a/src/syscall/android_compat_syscalls.c b/src/syscall/android_compat_syscalls.c
+new file mode 100644
+index 0000000..113ba15
+--- /dev/null
++++ b/src/syscall/android_compat_syscalls.c
+@@ -0,0 +1,381 @@
++/* Guest syscall rewriting for the Android untrusted_app seccomp policy.
++ *
++ * Every process in the app domain inherits a seccomp filter from zygote
++ * whose KILL action composes with any filter at maximum severity, so no
++ * filter of ours can ever route a forbidden syscall to us before it is
++ * judged.  What does work is ptrace: PTRACE_SYSCALL enter stops are
++ * delivered *before* seccomp evaluation (verified empirically on this
++ * platform), so rewriting the registers at the enter stop replaces the
++ * forbidden syscall with an allowed equivalent before the KILL filter
++ * ever looks at it.
++ *
++ * This function therefore runs after proot's own translation (paths are
++ * already rewritten) and converts the classic syscalls glibc and friends
++ * still emit -- access, mkdir, unlink, rmdir, fork, poll, select, dup2,
++ * rename, link, symlink, chmod, *own, epoll_wait, accept, time, rseq,
++ * set_robust_list, io_uring_* -- into the modern forms the policy
++ * allows, or fails them with ENOSYS when no allowed equivalent exists
++ * and callers are known to tolerate it (rseq, robust lists, io_uring).
++ *
++ * The switch keys on the raw CURRENT syscall number so that syscalls
++ * proot itself already voided or replaced are left alone. */
++
++#include <errno.h>        /* ENOSYS, */
++#include <fcntl.h>        /* AT_FDCWD, AT_SYMLINK_NOFOLLOW, AT_REMOVEDIR, */
++#include <signal.h>       /* SIGCHLD, */
++#include <sys/syscall.h>  /* SYS_*, */
++
++#include "syscall/android_compat_syscalls.h"
++#include "syscall/sysnum.h"
++#include "tracee/reg.h"
++#include "tracee/mem.h"
++
++/* Below the stack pointer the kernel has not yet touched anything; the
++ * timeout conversions below stash their structs there.  The kernel reads
++ * them only when the (rewritten) syscall actually executes. */
++#define SCRATCH_DISTANCE 0x100
++
++static word_t scratch_area(const Tracee *tracee)
++{
++	return peek_reg(tracee, CURRENT, STACK_POINTER) - SCRATCH_DISTANCE;
++}
++
++static void void_with_enosys(Tracee *tracee)
++{
++	poke_reg(tracee, SYSARG_RESULT, (word_t) (-ENOSYS));
++	set_sysnum(tracee, PR_void);
++}
++
++
++void android_compat_rewrite_syscall(Tracee *tracee)
++{
++	word_t nr = peek_reg(tracee, CURRENT, SYSARG_NUM);
++	word_t a1;
++	word_t a2;
++	word_t a3;
++	word_t a4;
++	word_t scratch;
++	word_t timespec_address;
++
++	switch (nr) {
++
++	/* access(path, mode) -> faccessat(AT_FDCWD, path, mode) */
++#ifdef SYS_access
++	case SYS_access:
++		a1 = peek_reg(tracee, CURRENT, SYSARG_1);
++		a2 = peek_reg(tracee, CURRENT, SYSARG_2);
++		poke_reg(tracee, SYSARG_3, a2);
++		poke_reg(tracee, SYSARG_2, a1);
++		poke_reg(tracee, SYSARG_1, (word_t) AT_FDCWD);
++		set_sysnum(tracee, PR_faccessat);
++		break;
++
++	/* faccessat2(dfd, path, mode, flags) -> faccessat(dfd, path, mode):
++	 * only AT_EACCESS is silently dropped; proot users do not rely on
++	 * it for execution checks. */
++#endif
++#ifdef SYS_faccessat2
++	case SYS_faccessat2:
++		set_sysnum(tracee, PR_faccessat);
++		break;
++
++	/* lstat(path, buf) -> newfstatat(AT_FDCWD, path, buf, NOFOLLOW) */
++#endif
++#ifdef SYS_lstat
++	case SYS_lstat:
++		a1 = peek_reg(tracee, CURRENT, SYSARG_1);
++		a2 = peek_reg(tracee, CURRENT, SYSARG_2);
++		poke_reg(tracee, SYSARG_4, (word_t) AT_SYMLINK_NOFOLLOW);
++		poke_reg(tracee, SYSARG_3, a2);
++		poke_reg(tracee, SYSARG_2, a1);
++		poke_reg(tracee, SYSARG_1, (word_t) AT_FDCWD);
++		set_sysnum(tracee, PR_newfstatat);
++		break;
++
++	/* mkdir(path, mode) -> mkdirat(AT_FDCWD, path, mode) */
++#endif
++#ifdef SYS_mkdir
++	case SYS_mkdir:
++		a1 = peek_reg(tracee, CURRENT, SYSARG_1);
++		a2 = peek_reg(tracee, CURRENT, SYSARG_2);
++		poke_reg(tracee, SYSARG_3, a2);
++		poke_reg(tracee, SYSARG_2, a1);
++		poke_reg(tracee, SYSARG_1, (word_t) AT_FDCWD);
++		set_sysnum(tracee, PR_mkdirat);
++		break;
++
++	/* unlink(path) -> unlinkat(AT_FDCWD, path, 0) */
++#endif
++#ifdef SYS_unlink
++	case SYS_unlink:
++		a1 = peek_reg(tracee, CURRENT, SYSARG_1);
++		poke_reg(tracee, SYSARG_4, 0);
++		poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
++		poke_reg(tracee, SYSARG_2, a1);
++		poke_reg(tracee, SYSARG_1, (word_t) AT_FDCWD);
++		set_sysnum(tracee, PR_unlinkat);
++		break;
++
++	/* rmdir(path) -> unlinkat(AT_FDCWD, path, AT_REMOVEDIR) */
++#endif
++#ifdef SYS_rmdir
++	case SYS_rmdir:
++		a1 = peek_reg(tracee, CURRENT, SYSARG_1);
++		poke_reg(tracee, SYSARG_4, (word_t) AT_REMOVEDIR);
++		poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
++		poke_reg(tracee, SYSARG_2, a1);
++		poke_reg(tracee, SYSARG_1, (word_t) AT_FDCWD);
++		set_sysnum(tracee, PR_unlinkat);
++		break;
++
++	/* fork() -> clone(SIGCHLD, ...) with all pointer args zeroed;
++	 * glibc emits clone directly, this covers musl/legacy emitters. */
++#endif
++#ifdef SYS_fork
++	case SYS_fork:
++		poke_reg(tracee, SYSARG_1, (word_t) SIGCHLD);
++		poke_reg(tracee, SYSARG_2, 0);
++		poke_reg(tracee, SYSARG_3, 0);
++		poke_reg(tracee, SYSARG_4, 0);
++		poke_reg(tracee, SYSARG_5, 0);
++		poke_reg(tracee, SYSARG_6, 0);
++		set_sysnum(tracee, PR_clone);
++		break;
++
++	/* pipe(fds) -> pipe2(fds, 0) */
++#endif
++#ifdef SYS_pipe
++	case SYS_pipe:
++		poke_reg(tracee, SYSARG_2, 0);
++		set_sysnum(tracee, PR_pipe2);
++		break;
++
++	/* poll(fds, count, timeout_ms) -> ppoll(fds, count, timespec*, 0) */
++#endif
++#ifdef SYS_poll
++	case SYS_poll:
++		a3 = peek_reg(tracee, CURRENT, SYSARG_3);
++		scratch = scratch_area(tracee);
++		if ((long) a3 < 0) {
++			timespec_address = 0;
++		} else {
++			poke_uint64(tracee, scratch, (uint64_t) a3 / 1000);
++			poke_uint64(tracee, scratch + 8,
++				    ((uint64_t) a3 % 1000) * 1000000u);
++			timespec_address = scratch;
++		}
++		poke_reg(tracee, SYSARG_5, 0);
++		poke_reg(tracee, SYSARG_4, 0);
++		poke_reg(tracee, SYSARG_3, timespec_address);
++		set_sysnum(tracee, PR_ppoll);
++		break;
++
++	/* select(..., timeval*, oldmask**) -> pselect6(..., timespec*, 0, 0):
++	 * the old-mask out-pointer must not be mistaken for an input
++	 * signal mask, so SYSARG_5/6 are cleared as well. */
++#endif
++#ifdef SYS_select
++	case SYS_select:
++		a4 = peek_reg(tracee, CURRENT, SYSARG_4);
++		scratch = scratch_area(tracee);
++		if (a4 == 0) {
++			timespec_address = 0;
++		} else {
++			uint64_t seconds = peek_uint64(tracee, a4);
++			uint64_t microseconds = peek_uint64(tracee, a4 + 8);
++			poke_uint64(tracee, scratch, seconds);
++			poke_uint64(tracee, scratch + 8, microseconds * 1000u);
++			timespec_address = scratch;
++		}
++		poke_reg(tracee, SYSARG_6, 0);
++		poke_reg(tracee, SYSARG_5, 0);
++		poke_reg(tracee, SYSARG_4, timespec_address);
++		set_sysnum(tracee, PR_pselect6);
++		break;
++
++	/* epoll_wait(fd, events, max, timeout) -> epoll_pwait(..., 0) */
++#endif
++#ifdef SYS_epoll_wait
++	case SYS_epoll_wait:
++		poke_reg(tracee, SYSARG_6, 0);
++		poke_reg(tracee, SYSARG_5, 0);
++		set_sysnum(tracee, PR_epoll_pwait);
++		break;
++
++	/* dup2(old, new) -> dup3(old, new, 0) */
++#endif
++#ifdef SYS_dup2
++	case SYS_dup2:
++		poke_reg(tracee, SYSARG_4, 0);
++		set_sysnum(tracee, PR_dup3);
++		break;
++
++	/* pause() -> ppoll(NULL, 0, NULL, NULL): sleeps until a signal
++	 * arrives and returns EINTR, exactly like pause(). */
++#endif
++#ifdef SYS_pause
++	case SYS_pause:
++		poke_reg(tracee, SYSARG_4, 0);
++		poke_reg(tracee, SYSARG_3, 0);
++		poke_reg(tracee, SYSARG_2, 0);
++		poke_reg(tracee, SYSARG_1, 0);
++		set_sysnum(tracee, PR_ppoll);
++		break;
++
++	/* rename(old, new) -> renameat2(AT_FDCWD, old, AT_FDCWD, new, 0) */
++#endif
++#ifdef SYS_rename
++	case SYS_rename:
++		a1 = peek_reg(tracee, CURRENT, SYSARG_1);
++		a2 = peek_reg(tracee, CURRENT, SYSARG_2);
++		poke_reg(tracee, SYSARG_5, 0);
++		poke_reg(tracee, SYSARG_4, a2);
++		poke_reg(tracee, SYSARG_3, (word_t) AT_FDCWD);
++		poke_reg(tracee, SYSARG_2, a1);
++		poke_reg(tracee, SYSARG_1, (word_t) AT_FDCWD);
++		set_sysnum(tracee, PR_renameat2);
++		break;
++
++	/* renameat(od, old, nd, new) -> renameat2(..., 0) */
++#endif
++#ifdef SYS_renameat
++	case SYS_renameat:
++		poke_reg(tracee, SYSARG_5, 0);
++		set_sysnum(tracee, PR_renameat2);
++		break;
++
++	/* link(old, new) -> linkat(AT_FDCWD, old, AT_FDCWD, new, 0) */
++#endif
++#ifdef SYS_link
++	case SYS_link:
++		a1 = peek_reg(tracee, CURRENT, SYSARG_1);
++		a2 = peek_reg(tracee, CURRENT, SYSARG_2);
++		poke_reg(tracee, SYSARG_5, 0);
++		poke_reg(tracee, SYSARG_4, a2);
++		poke_reg(tracee, SYSARG_3, (word_t) AT_FDCWD);
++		poke_reg(tracee, SYSARG_2, a1);
++		poke_reg(tracee, SYSARG_1, (word_t) AT_FDCWD);
++		set_sysnum(tracee, PR_linkat);
++		break;
++
++	/* symlink(target, link) -> symlinkat(target, AT_FDCWD, link) */
++#endif
++#ifdef SYS_symlink
++	case SYS_symlink:
++		a2 = peek_reg(tracee, CURRENT, SYSARG_2);
++		poke_reg(tracee, SYSARG_4, peek_reg(tracee, CURRENT, SYSARG_3));
++		poke_reg(tracee, SYSARG_3, a2);
++		poke_reg(tracee, SYSARG_2, (word_t) AT_FDCWD);
++		set_sysnum(tracee, PR_symlinkat);
++		break;
++
++	/* chmod(path, mode) -> fchmodat(AT_FDCWD, path, mode) */
++#endif
++#ifdef SYS_chmod
++	case SYS_chmod:
++		a1 = peek_reg(tracee, CURRENT, SYSARG_1);
++		a2 = peek_reg(tracee, CURRENT, SYSARG_2);
++		poke_reg(tracee, SYSARG_3, a2);
++		poke_reg(tracee, SYSARG_2, a1);
++		poke_reg(tracee, SYSARG_1, (word_t) AT_FDCWD);
++		set_sysnum(tracee, PR_fchmodat);
++		break;
++
++	/* chown(path, uid, gid) -> fchownat(AT_FDCWD, path, uid, gid, 0) */
++#endif
++#ifdef SYS_chown
++	case SYS_chown:
++		a1 = peek_reg(tracee, CURRENT, SYSARG_1);
++		a2 = peek_reg(tracee, CURRENT, SYSARG_2);
++		a3 = peek_reg(tracee, CURRENT, SYSARG_3);
++		poke_reg(tracee, SYSARG_5, 0);
++		poke_reg(tracee, SYSARG_4, a3);
++		poke_reg(tracee, SYSARG_3, a2);
++		poke_reg(tracee, SYSARG_2, a1);
++		poke_reg(tracee, SYSARG_1, (word_t) AT_FDCWD);
++		set_sysnum(tracee, PR_fchownat);
++		break;
++
++	/* lchown(path, uid, gid) -> fchownat(..., AT_SYMLINK_NOFOLLOW) */
++#endif
++#ifdef SYS_lchown
++	case SYS_lchown:
++		a1 = peek_reg(tracee, CURRENT, SYSARG_1);
++		a2 = peek_reg(tracee, CURRENT, SYSARG_2);
++		a3 = peek_reg(tracee, CURRENT, SYSARG_3);
++		poke_reg(tracee, SYSARG_5, (word_t) AT_SYMLINK_NOFOLLOW);
++		poke_reg(tracee, SYSARG_4, a3);
++		poke_reg(tracee, SYSARG_3, a2);
++		poke_reg(tracee, SYSARG_2, a1);
++		poke_reg(tracee, SYSARG_1, (word_t) AT_FDCWD);
++		set_sysnum(tracee, PR_fchownat);
++		break;
++
++	/* accept(fd, addr, len) -> accept4(fd, addr, len, 0) */
++#endif
++#ifdef SYS_accept
++	case SYS_accept:
++		poke_reg(tracee, SYSARG_4, 0);
++		set_sysnum(tracee, PR_accept4);
++		break;
++
++	/* epoll_create(size) -> epoll_create1(0) */
++#endif
++#ifdef SYS_epoll_create
++	case SYS_epoll_create:
++		poke_reg(tracee, SYSARG_1, 0);
++		set_sysnum(tracee, PR_epoll_create1);
++		break;
++
++	/* inotify_init() -> inotify_init1(0) */
++#endif
++#ifdef SYS_inotify_init
++	case SYS_inotify_init:
++		poke_reg(tracee, SYSARG_1, 0);
++		set_sysnum(tracee, PR_inotify_init1);
++		break;
++
++	/* openat2(dfd, path, struct open_how*) -> openat(dfd, path, flags,
++	 * mode): unbundle the struct; the resolve-mask is dropped (no
++	 * caller in this environment uses RESOLVE_* flags). */
++#endif
++#ifdef SYS_openat2
++	case SYS_openat2:
++		a3 = peek_reg(tracee, CURRENT, SYSARG_3);
++		poke_reg(tracee, SYSARG_4, (word_t) peek_uint64(tracee, a3 + 8));
++		poke_reg(tracee, SYSARG_3, (word_t) peek_uint64(tracee, a3));
++		set_sysnum(tracee, PR_openat);
++		break;
++
++	/* No allowed equivalent, but every in-tree caller treats ENOSYS as
++	 * "feature unavailable": robust-list bookkeeping, rseq, io_uring,
++	 * and time() (the vdso supplies it when it matters). */
++#endif
++#ifdef SYS_set_robust_list
++	case SYS_set_robust_list:
++#endif
++#ifdef SYS_get_robust_list
++	case SYS_get_robust_list:
++#endif
++#ifdef SYS_rseq
++	case SYS_rseq:
++#endif
++#ifdef SYS_io_uring_setup
++	case SYS_io_uring_setup:
++#endif
++#ifdef SYS_io_uring_enter
++	case SYS_io_uring_enter:
++#endif
++#ifdef SYS_io_uring_register
++	case SYS_io_uring_register:
++#endif
++#ifdef SYS_time
++	case SYS_time:
++		void_with_enosys(tracee);
++		break;
++
++#endif
++	default:
++		break;
++	}
++}
+diff --git a/src/syscall/android_compat_syscalls.h b/src/syscall/android_compat_syscalls.h
+new file mode 100644
+index 0000000..97232b4
+--- /dev/null
++++ b/src/syscall/android_compat_syscalls.h
+@@ -0,0 +1,11 @@
++/* Enter-stop rewrite that keeps Android's zygote-installed seccomp KILL
++ * filter from killing guest processes.  See android_compat_syscalls.c. */
++
++#ifndef ANDROID_COMPAT_SYSCALLS_H
++#define ANDROID_COMPAT_SYSCALLS_H
++
++#include "tracee/tracee.h"
++
++extern void android_compat_rewrite_syscall(Tracee *tracee);
++
++#endif
+diff --git a/src/syscall/syscall.c b/src/syscall/syscall.c
+index f4c2f50..2ae18e6 100644
+--- a/src/syscall/syscall.c
++++ b/src/syscall/syscall.c
+@@ -27,6 +27,7 @@
+ 
+ #include "syscall/syscall.h"
+ #include "syscall/chain.h"
++#include "syscall/android_compat_syscalls.h"
+ #include "extension/extension.h"
+ #include "tracee/tracee.h"
+ #include "tracee/reg.h"
+@@ -176,6 +177,10 @@ void translate_syscall(Tracee *tracee)
+ 		if (tracee->chain.syscalls == NULL) {
+ 			save_current_regs(tracee, ORIGINAL);
+ 			status = translate_syscall_enter(tracee);
++			/* Convert syscalls the app seccomp policy would SIGSYS
++			 * into allowed equivalents before the exit stage and
++			 * before proot's registers are saved as MODIFIED. */
++			android_compat_rewrite_syscall(tracee);
+ 			save_current_regs(tracee, MODIFIED);
+ 		}
+ 		else {
