@@ -15,7 +15,7 @@ new file mode 100644
 index 0000000..092b403
 --- /dev/null
 +++ b/src/syscall/android_compat_syscalls.c
-@@ -0,0 +1,431 @@
+@@ -0,0 +1,423 @@
 +/* Guest syscall rewriting for the Android untrusted_app seccomp policy.
 + *
 + * Every process in the app domain inherits a seccomp filter from zygote
@@ -421,8 +421,6 @@ index 0000000..092b403
 +	else {
 +		for (argument_index = 0; argument_index < 6; argument_index++)
 +			tracee->android_compat_saved_args[argument_index] = original_args[argument_index];
-+		tracee->android_compat_saved_sysnum = nr;
-+		tracee->android_compat_rewritten_sysnum = peek_reg(tracee, CURRENT, SYSARG_NUM);
 +		tracee->android_compat_did_rewrite = true;
 +	}
 +}
@@ -434,17 +432,11 @@ index 0000000..092b403
 +	if (!tracee->android_compat_did_rewrite)
 +		return;
 +
-+	/* An enter-stage failure renumbers to the avoider after this rewrite;
-+	 * that state must survive untouched. */
-+	if (peek_reg(tracee, CURRENT, SYSARG_NUM) != tracee->android_compat_rewritten_sysnum) {
-+		tracee->android_compat_did_rewrite = false;
-+		return;
-+	}
-+
++	/* At the exit stage the syscall number register holds the kernel result,
++	 * so only the argument registers are put back.  */
 +	for (argument_index = 0; argument_index < 6; argument_index++)
 +		poke_reg(tracee, (Reg) (SYSARG_1 + argument_index),
 +			 tracee->android_compat_saved_args[argument_index]);
-+	set_sysnum(tracee, tracee->android_compat_saved_sysnum);
 +	tracee->android_compat_did_rewrite = false;
 +}
 diff --git a/src/syscall/android_compat_syscalls.h b/src/syscall/android_compat_syscalls.h
@@ -481,11 +473,11 @@ index f4c2f50..2ae18e6 100644
  		if (tracee->chain.syscalls == NULL) {
  			save_current_regs(tracee, ORIGINAL);
  			status = translate_syscall_enter(tracee);
-+			/* Convert syscalls the app seccomp policy would SIGSYS
-+			 * into allowed equivalents before the exit stage and
-+			 * before proot's registers are saved as MODIFIED. */
-+			android_compat_rewrite_syscall(tracee);
  			save_current_regs(tracee, MODIFIED);
++			/* Convert syscalls the app seccomp policy would SIGSYS
++			 * into allowed equivalents after proot snapshots the
++			 * layout the exit stage bookkeeping expects.  */
++			android_compat_rewrite_syscall(tracee);
  		}
  		else {
 @@ -262,10 +267,11 @@
@@ -503,18 +495,16 @@ index f4c2f50..2ae18e6 100644
 diff --git a/src/tracee/tracee.h b/src/tracee/tracee.h
 --- a/src/tracee/tracee.h
 +++ b/src/tracee/tracee.h
-@@ -215,9 +215,16 @@ typedef struct tracee {
+@@ -215,9 +215,14 @@ typedef struct tracee {
  	/* Value of the tracee's general purpose registers.  */
  	struct user_regs_struct _regs[NB_REG_VERSION];
  	bool _regs_were_changed;
  	bool restore_original_regs;
  	bool restore_original_regs_after_seccomp_event;
-+	/* Argument registers and syscall number saved by
-+	 * android_compat_rewrite_syscall() before it rewrites them at the enter
-+	 * stage, so the exit stage can restore the original layout.  */
++	/* Argument registers saved by android_compat_rewrite_syscall() before
++	 * it rewrites them at the enter stage, so the exit stage can restore
++	 * the original layout.  */
 +	word_t android_compat_saved_args[6];
-+	word_t android_compat_saved_sysnum;
-+	word_t android_compat_rewritten_sysnum;
 +	bool android_compat_did_rewrite;
 
  	/* State for the special handling of SIGSTOP.  */
