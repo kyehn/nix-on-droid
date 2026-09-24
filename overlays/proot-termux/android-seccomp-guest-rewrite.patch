@@ -12,10 +12,10 @@ index 5ade279..8cf46d5 100644
  	syscall/exit.o		\
 diff --git a/src/syscall/android_compat_syscalls.c b/src/syscall/android_compat_syscalls.c
 new file mode 100644
-index 0000000..113ba15
+index 0000000..bb017bd
 --- /dev/null
 +++ b/src/syscall/android_compat_syscalls.c
-@@ -0,0 +1,381 @@
+@@ -0,0 +1,389 @@
 +/* Guest syscall rewriting for the Android untrusted_app seccomp policy.
 + *
 + * Every process in the app domain inherits a seccomp filter from zygote
@@ -127,8 +127,7 @@ index 0000000..113ba15
 +#ifdef SYS_unlink
 +	case SYS_unlink:
 +		a1 = peek_reg(tracee, CURRENT, SYSARG_1);
-+		poke_reg(tracee, SYSARG_4, 0);
-+		poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
++		poke_reg(tracee, SYSARG_3, 0);
 +		poke_reg(tracee, SYSARG_2, a1);
 +		poke_reg(tracee, SYSARG_1, (word_t) AT_FDCWD);
 +		set_sysnum(tracee, PR_unlinkat);
@@ -139,8 +138,7 @@ index 0000000..113ba15
 +#ifdef SYS_rmdir
 +	case SYS_rmdir:
 +		a1 = peek_reg(tracee, CURRENT, SYSARG_1);
-+		poke_reg(tracee, SYSARG_4, (word_t) AT_REMOVEDIR);
-+		poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
++		poke_reg(tracee, SYSARG_3, (word_t) AT_REMOVEDIR);
 +		poke_reg(tracee, SYSARG_2, a1);
 +		poke_reg(tracee, SYSARG_1, (word_t) AT_FDCWD);
 +		set_sysnum(tracee, PR_unlinkat);
@@ -224,7 +222,16 @@ index 0000000..113ba15
 +#endif
 +#ifdef SYS_dup2
 +	case SYS_dup2:
-+		poke_reg(tracee, SYSARG_4, 0);
++		/* dup3() rejects oldfd == newfd with EINVAL while dup2() treats
++		 * it as a no-op returning oldfd: void the syscall and report
++		 * the no-op result directly. */
++		if (peek_reg(tracee, CURRENT, SYSARG_1) ==
++		    peek_reg(tracee, CURRENT, SYSARG_2)) {
++			poke_reg(tracee, RESULT, peek_reg(tracee, CURRENT, SYSARG_1));
++			set_sysnum(tracee, PR_void);
++			break;
++		}
++		poke_reg(tracee, SYSARG_3, 0);
 +		set_sysnum(tracee, PR_dup3);
 +		break;
 +
@@ -233,6 +240,7 @@ index 0000000..113ba15
 +#endif
 +#ifdef SYS_pause
 +	case SYS_pause:
++		poke_reg(tracee, SYSARG_5, 0);
 +		poke_reg(tracee, SYSARG_4, 0);
 +		poke_reg(tracee, SYSARG_3, 0);
 +		poke_reg(tracee, SYSARG_2, 0);
