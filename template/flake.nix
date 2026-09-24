@@ -6,7 +6,7 @@
       inputs.nixpkgs-lib.follows = "nixpkgs";
     };
     nix-on-droid = {
-      url = "github:kyehn/nix-on-droid/unstable";
+      url = "github:kyehn/nix-on-droid/beta";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-parts.follows = "flake-parts";
     };

@@ -31,7 +31,7 @@
     };
     flake.nix-on-droid = lib.mkOption {
       type = lib.types.str;
-      default = "github:kyehn/nix-on-droid/unstable";
+      default = "github:kyehn/nix-on-droid/beta";
     };
     etc = lib.mkOption {
       type = lib.types.package;
