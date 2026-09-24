@@ -55,7 +55,7 @@ buildGoModule (finalAttrs: {
           ];
         };
         first_run = {
-          enable = false;
+          enable = config.system.build.bootstrapBuild;
           environment = [
             {
               name = "GC_NPROCS";
