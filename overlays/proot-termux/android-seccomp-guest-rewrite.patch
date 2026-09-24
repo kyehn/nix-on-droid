@@ -15,7 +15,7 @@ new file mode 100644
 index 0000000..092b403
 --- /dev/null
 +++ b/src/syscall/android_compat_syscalls.c
-@@ -0,0 +1,418 @@
+@@ -0,0 +1,429 @@
 +/* Guest syscall rewriting for the Android untrusted_app seccomp policy.
 + *
 + * Every process in the app domain inherits a seccomp filter from zygote
@@ -427,11 +427,22 @@ index 0000000..092b403
 +	if (!tracee->android_compat_did_rewrite)
 +		return;
 +
-+	/* At the exit stage the syscall number register holds the kernel result,
-+	 * so only the argument registers are put back.  */
-+	for (argument_index = 0; argument_index < 6; argument_index++)
++	/* At the exit stage the argument registers are put back so proot's own
++	 * exit translation reads the pre-rewrite layout.  On ARM/ARM64
++	 * SYSARG_1 aliases SYSARG_RESULT, which at this stage holds the kernel
++	 * result; overwriting it with a saved argument (AT_FDCWD is -100, seen
++	 * by the guest as errno 100) corrupts every rewritten syscall, and
++	 * tracee/reg.c applies the same guard when restoring snapshots.  The
++	 * result lives in its own register on x86, so all six arguments are
++	 * restored there.  */
++	for (argument_index = 0; argument_index < 6; argument_index++) {
++#if defined(ARCH_ARM_EABI) || defined(ARCH_ARM64)
++		if (argument_index == 0)
++			continue;
++#endif
 +		poke_reg(tracee, (Reg) (SYSARG_1 + argument_index),
 +			 tracee->android_compat_saved_args[argument_index]);
++	}
 +	tracee->android_compat_did_rewrite = false;
 +}
 diff --git a/src/syscall/android_compat_syscalls.h b/src/syscall/android_compat_syscalls.h
