@@ -15,7 +15,7 @@ new file mode 100644
 index 0000000..092b403
 --- /dev/null
 +++ b/src/syscall/android_compat_syscalls.c
-@@ -0,0 +1,423 @@
+@@ -0,0 +1,418 @@
 +/* Guest syscall rewriting for the Android untrusted_app seccomp policy.
 + *
 + * Every process in the app domain inherits a seccomp filter from zygote
@@ -193,7 +193,6 @@ index 0000000..092b403
 +		poke_reg(tracee, SYSARG_3, timespec_address);
 +		set_sysnum(tracee, PR_ppoll);
 +		break;
-+
 +	/* select(..., timeval*, oldmask**) -> pselect6(..., timespec*, 0, 0):
 +	 * the old-mask out-pointer must not be mistaken for an input
 +	 * signal mask, so SYSARG_5/6 are cleared as well. */
@@ -382,8 +381,8 @@ index 0000000..092b403
 +		break;
 +
 +	/* No allowed equivalent, but every in-tree caller treats ENOSYS as
-+	 * "feature unavailable": robust-list bookkeeping, rseq, io_uring,
-+	 * and time() (the vdso supplies it when it matters). */
++	 * "feature unavailable": robust-list bookkeeping, rseq, io_uring.
++	 * time() is excluded: voiding it breaks OpenSSL X509 time checks. */
 +#endif
 +#ifdef SYS_set_robust_list
 +	case SYS_set_robust_list:
@@ -403,12 +402,8 @@ index 0000000..092b403
 +#ifdef SYS_io_uring_register
 +	case SYS_io_uring_register:
 +#endif
-+#ifdef SYS_time
-+	case SYS_time:
-+		void_with_enosys(tracee);
-+		break;
-+
-+#endif
++	void_with_enosys(tracee);
++	break;
 +	default:
 +		break;
 +	}
