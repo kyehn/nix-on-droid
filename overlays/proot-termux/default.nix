@@ -19,6 +19,9 @@ stdenv.mkDerivation (finalAttrs: {
   patches = [
     ./detranslate-empty.patch
     ./syscall-support-fchmodat2.patch
+    # Android untrusted_app seccomp compatibility: proot's own blocked
+    # libc calls (fork, access, mkdir, unlink, ...).
+    ./android-seccomp-self-compat.patch
   ];
 
   # Apply source modifications to fix loader bloat, seccomp offsets, and 32-bit linker errors.
