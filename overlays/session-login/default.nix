@@ -25,7 +25,7 @@ buildGoModule (finalAttrs: {
     ];
   };
 
-  vendorHash = "sha256-PPhKWy4rfVFziftRpEY8Ffs3wr0RFfcfZQToGibQuT4=";
+  vendorHash = "sha256-FkIQ0GT/JSPdDcNMxsoyCZSwC7kGxffVdVCoaWLUsec=";
 
   subPackages = [ "cmd/login" ];
 
