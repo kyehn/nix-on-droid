@@ -3,10 +3,10 @@ new file mode 100644
 index 0000000..0ad33bc
 --- /dev/null
 +++ b/src/android_compat.h
-@@ -0,0 +1,146 @@
+@@ -0,0 +1,162 @@
 +/* Helpers that issue only syscalls permitted by the Android untrusted_app
 + * seccomp policy inherited from zygote (SIGSYS-killing KILL action for
-+ * legacy calls such as access, mkdir, unlink, fork, poll, dup2, ...).
++ * legacy calls such as access, mkdir, unlink, fork, poll, dup2, mknod, ...).
 + * proot itself runs inside the app domain, so every libc wrapper that
 + * maps onto a blocked syscall must be replaced by its modern equivalent.
 + *
@@ -41,6 +41,22 @@ index 0000000..0ad33bc
 +static inline int ac_mkdir(const char *path, mode_t mode)
 +{
 +	return syscall(SYS_mkdirat, AT_FDCWD, path, mode);
++}
++
++/* mknod(2) is killed by the untrusted_app filter: create the glue
++ * placeholder with openat(2) instead.  Every non-directory placeholder
++ * is a regular file: char/block/symlink sources are already coerced to
++ * S_IFREG by initialize_binding(), and FIFO/socket sources only back a
++ * final component that the binding immediately overrides.  Like
++ * mknod(2), fails with EEXIST if @path already exists.  */
++static inline int ac_mknod_reg(const char *path, mode_t mode)
++{
++	int fd = (int) syscall(SYS_openat, AT_FDCWD, path,
++			    O_WRONLY | O_CREAT | O_EXCL, mode);
++	if (fd < 0)
++		return -1;
++	syscall(SYS_close, fd);
++	return 0;
 +}
 +
 +static inline int ac_unlink(const char *path)
@@ -654,7 +670,7 @@ index 816a339..0c230ab 100644
  #include <sys/stat.h> /* mkdir(2), lstat(2), */
  #include <fcntl.h>    /* mknod(2), */
  #include <unistd.h>   /* mknod(2), lstat(2), unlink(2), rmdir(2), */
-@@ -47,17 +48,17 @@ static int remove_placeholder(char *path)
+@@ -47,17 +48,17 @@
  	struct stat statl;
  	int status;
  
@@ -675,15 +691,20 @@ index 816a339..0c230ab 100644
  	if (status)
  		return 0; /* Not fatal.  */
  
-@@ -148,7 +149,7 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
+@@ -148,9 +149,10 @@
  	/* Try to create this component into the "guest" or "glue"
  	 * rootfs (depending if there were a glue previously).  */
  	if (S_ISDIR(type))
 -		status = mkdir(host_path, mode);
+-	else /* S_IFREG, S_IFCHR, S_IFBLK, S_IFIFO or S_IFSOCK.  */
+-		status = mknod(host_path, mode | type, 0);
 +		status = ac_mkdir(host_path, mode);
- 	else /* S_IFREG, S_IFCHR, S_IFBLK, S_IFIFO or S_IFSOCK.  */
- 		status = mknod(host_path, mode | type, 0);
++	else /* Non-directory placeholder: mknod(2) is killed by the
++	     * seccomp filter, create a regular file instead.  */
++		status = ac_mknod_reg(host_path, mode);
  
+ 	/* Remove placeholders from the guest rootfs once PRoot is
+ 	 * terminated.  */
 diff --git a/src/path/temp.c b/src/path/temp.c
 index dde2296..2f891e5 100644
 --- a/src/path/temp.c
