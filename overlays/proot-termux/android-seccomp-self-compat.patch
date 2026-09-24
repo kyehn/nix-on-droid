@@ -743,13 +743,12 @@ index dde2296..2f891e5 100644
  	if (status < 0)
  		note(NULL, ERROR, SYSTEM, "can't remove '%s'", path);
  
-@@ -296,7 +297,8 @@ const char *create_temp_directory(TALLOC_CTX *context, const char *prefix)
+@@ -296,7 +297,7 @@ const char *create_temp_directory(TALLOC_CTX *context, const char *prefix)
  	if (name == NULL)
  		return NULL;
  
 -	name = mkdtemp(name);
-+	if (ac_mkdtemp(name) != 0)
-+		name = NULL;
++	name = ac_mkdtemp(name);
  	if (name == NULL) {
  		note(NULL, ERROR, SYSTEM, "can't create temporary directory");
  		note(NULL, INFO, USER, "Please set PROOT_TMP_DIR env. variable "
