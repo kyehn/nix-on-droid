@@ -15,7 +15,7 @@ new file mode 100644
 index 0000000..092b403
 --- /dev/null
 +++ b/src/syscall/android_compat_syscalls.c
-@@ -0,0 +1,389 @@
+@@ -0,0 +1,431 @@
 +/* Guest syscall rewriting for the Android untrusted_app seccomp policy.
 + *
 + * Every process in the app domain inherits a seccomp filter from zygote
@@ -74,6 +74,14 @@ index 0000000..092b403
 +	word_t a4;
 +	word_t scratch;
 +	word_t timespec_address;
++
++	/* Argument registers as they stand after path translation and before
++	 * any rewriting, so the exit stage can restore the original layout. */
++	word_t original_args[6];
++	int argument_index;
++
++	for (argument_index = 0; argument_index < 6; argument_index++)
++		original_args[argument_index] = peek_reg(tracee, CURRENT, (Reg) (SYSARG_1 + argument_index));
 +
 +	switch (nr) {
 +
@@ -404,13 +412,47 @@ index 0000000..092b403
 +	default:
 +		break;
 +	}
++
++	/* Record the rewrite so the exit stage can invert it; syscalls left
++	 * untouched clear the marker. */
++	if (peek_reg(tracee, CURRENT, SYSARG_NUM) == nr) {
++		tracee->android_compat_did_rewrite = false;
++	}
++	else {
++		for (argument_index = 0; argument_index < 6; argument_index++)
++			tracee->android_compat_saved_args[argument_index] = original_args[argument_index];
++		tracee->android_compat_saved_sysnum = nr;
++		tracee->android_compat_rewritten_sysnum = peek_reg(tracee, CURRENT, SYSARG_NUM);
++		tracee->android_compat_did_rewrite = true;
++	}
++}
++
++void android_compat_restore_syscall(Tracee *tracee)
++{
++	int argument_index;
++
++	if (!tracee->android_compat_did_rewrite)
++		return;
++
++	/* An enter-stage failure renumbers to the avoider after this rewrite;
++	 * that state must survive untouched. */
++	if (peek_reg(tracee, CURRENT, SYSARG_NUM) != tracee->android_compat_rewritten_sysnum) {
++		tracee->android_compat_did_rewrite = false;
++		return;
++	}
++
++	for (argument_index = 0; argument_index < 6; argument_index++)
++		poke_reg(tracee, (Reg) (SYSARG_1 + argument_index),
++			 tracee->android_compat_saved_args[argument_index]);
++	set_sysnum(tracee, tracee->android_compat_saved_sysnum);
++	tracee->android_compat_did_rewrite = false;
 +}
 diff --git a/src/syscall/android_compat_syscalls.h b/src/syscall/android_compat_syscalls.h
 new file mode 100644
 index 0000000..97232b4
 --- /dev/null
 +++ b/src/syscall/android_compat_syscalls.h
-@@ -0,0 +1,11 @@
+@@ -0,0 +1,12 @@
 +/* Enter-stop rewrite that keeps Android's zygote-installed seccomp KILL
 + * filter from killing guest processes.  See android_compat_syscalls.c. */
 +
@@ -420,6 +462,7 @@ index 0000000..97232b4
 +#include "tracee/tracee.h"
 +
 +extern void android_compat_rewrite_syscall(Tracee *tracee);
++extern void android_compat_restore_syscall(Tracee *tracee);
 +
 +#endif
 diff --git a/src/syscall/syscall.c b/src/syscall/syscall.c
@@ -445,3 +488,35 @@ index f4c2f50..2ae18e6 100644
  			save_current_regs(tracee, MODIFIED);
  		}
  		else {
+@@ -262,10 +267,11 @@
+ 		/* Translate the syscall only if it was actually
+ 		 * requested by the tracee, it is not a syscall
+ 		 * chained by PRoot.  */
+ 		if (tracee->chain.syscalls == NULL || tracee->chain.sysnum_workaround_state == SYSNUM_WORKAROUND_PROCESS_REPLACED_CALL) {
+ 			tracee->chain.sysnum_workaround_state = SYSNUM_WORKAROUND_INACTIVE;
++			android_compat_restore_syscall(tracee);
+ 			translate_syscall_exit(tracee);
+ 		}
+ 		else if (tracee->chain.sysnum_workaround_state == SYSNUM_WORKAROUND_PROCESS_FAULTY_CALL) {
+ 			tracee->chain.sysnum_workaround_state = SYSNUM_WORKAROUND_PROCESS_REPLACED_CALL;
+ 		}
+diff --git a/src/tracee/tracee.h b/src/tracee/tracee.h
+--- a/src/tracee/tracee.h
++++ b/src/tracee/tracee.h
+@@ -215,9 +215,16 @@ typedef struct tracee {
+ 	/* Value of the tracee's general purpose registers.  */
+ 	struct user_regs_struct _regs[NB_REG_VERSION];
+ 	bool _regs_were_changed;
+ 	bool restore_original_regs;
+ 	bool restore_original_regs_after_seccomp_event;
++	/* Argument registers and syscall number saved by
++	 * android_compat_rewrite_syscall() before it rewrites them at the enter
++	 * stage, so the exit stage can restore the original layout.  */
++	word_t android_compat_saved_args[6];
++	word_t android_compat_saved_sysnum;
++	word_t android_compat_rewritten_sysnum;
++	bool android_compat_did_rewrite;
+
+ 	/* State for the special handling of SIGSTOP.  */
+ 	enum {
+ 		SIGSTOP_IGNORED = 0,  /* Ignore SIGSTOP (once the parent is known).  */
