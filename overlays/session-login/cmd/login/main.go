@@ -13,7 +13,6 @@ import (
 	"github.com/gookit/config/v2"
 	"github.com/gookit/config/v2/toml"
 	"github.com/rotisserie/eris"
-	"github.com/shirou/gopsutil/v4/process"
 	"github.com/urfave/cli/v3"
 	"go.uber.org/zap"
 )
@@ -152,16 +151,6 @@ func main() {
 }
 
 func installPendingArtifacts(dryRun bool) error {
-	processes, err := process.Processes()
-	if err != nil {
-		return eris.Wrap(err, "list processes failed")
-	}
-	for _, proc := range processes {
-		name, err := proc.Name()
-		if err == nil && name == filepath.Base(cfg.Proot.BinaryPath) {
-			return nil
-		}
-	}
 	baseDir := filepath.Join(cfg.InstallationDir, "run", "nixos")
 	if err := os.MkdirAll(baseDir, 0o755); err != nil {
 		return eris.Wrap(err, "failed to create run/nixos directory")
