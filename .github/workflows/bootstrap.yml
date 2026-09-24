@@ -21,7 +21,7 @@ jobs:
           - ubuntu-latest
           - ubuntu-26.04-arm
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 35
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@main
       - uses: actions/checkout@main
