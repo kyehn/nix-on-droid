@@ -187,6 +187,22 @@ stdenv.mkDerivation (finalAttrs: {
     done
     echo "Stack alignment stress works"
 
+    signal_number=$(kill -l SEGV)
+    expected_signal_exit_status=$((128 + signal_number))
+    signal_output_file=$(mktemp)
+    set +e
+    PROOT_NO_SECCOMP=1 "$PROOT_BIN" -b /:/ sh -c 'sh -c "exit 0"; kill -SEGV $$' >"$signal_output_file" 2>&1
+    signal_exit_status=$?
+    set -e
+    if [ "$signal_exit_status" -ne "$expected_signal_exit_status" ]; then
+      cat "$signal_output_file"
+      rm -f "$signal_output_file"
+      printf 'signal exit status mismatch: expected %s, got %s\n' "$expected_signal_exit_status" "$signal_exit_status" >&2
+      exit 1
+    fi
+    rm -f "$signal_output_file"
+    echo "Signal exit status propagation works"
+
     runHook postInstallCheck
   '';
 
