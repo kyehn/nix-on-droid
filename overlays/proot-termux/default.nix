@@ -181,7 +181,8 @@ stdenv.mkDerivation (finalAttrs: {
     STACK_ALIGNMENT_STRESS_ITERATIONS=32
     iteration=0
     while [ "$iteration" -lt "$STACK_ALIGNMENT_STRESS_ITERATIONS" ]; do
-      "$PROOT_BIN" -b /:/ sh -c "exit 0"
+      PROOT_FORCE_KOMPAT=1 "$PROOT_BIN" -b /:/ sh -c "exit 0" || exit 1
+      "$PROOT_BIN" -b /:/ sh -c "exit 0" || exit 1
       iteration=$((iteration + 1))
     done
     echo "Stack alignment stress works"
