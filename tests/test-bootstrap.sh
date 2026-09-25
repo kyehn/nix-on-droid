@@ -80,6 +80,73 @@ sudo chown --recursive 0:0 "${WORKSPACE}/data"
 
 BWRAP_CMD=(sudo "${BWRAP_BIN}" --unshare-pid --unshare-ipc --unshare-uts --unshare-cgroup --unshare-user --uid "${DROID_UID}" --gid "${DROID_GID}" --hostname android-sim)
 
+if [[ "${PROOT_DIRECT_SMOKE:-0}" == "1" ]]; then
+	echo "[LOG] Running direct AArch64 proot exec smoke test"
+	exec "${BWRAP_CMD[@]}" \
+		--tmpfs /storage \
+		--tmpfs /vendor \
+		--tmpfs /mnt \
+		--bind "${WORKSPACE}/system" /system \
+		--bind "${WORKSPACE}/data" /data \
+		--bind "${WORKSPACE}/etc" /etc \
+		--proc /proc \
+		--dev /dev \
+		--setenv PATH "/system/bin:/system/xbin:/data/local/bin:${INSTALLATION_DIR}/bin" \
+		--setenv ANDROID_DATA "/data" \
+		--setenv ANDROID_ROOT "/system" \
+		--setenv ANDROID_VERSION "14" \
+		--setenv ANDROID_SDK "34" \
+		--setenv ANDROID_ART_ROOT "/system/bin/art" \
+		--setenv ANDROID_I18N_ROOT "/system/usr" \
+		--setenv ANDROID_RUNTIME_ROOT "/system" \
+		--setenv ANDROID_TZDATA_ROOT "/system/usr/share/zoneinfo" \
+		--setenv HOME "${APP_FILES}/home" \
+		--setenv USER "nix-on-droid" \
+		--setenv TERM "xterm-256color" \
+		--setenv TMPDIR "${INSTALLATION_DIR}/tmp" \
+		--setenv TEMP "${INSTALLATION_DIR}/tmp" \
+		--setenv EXTERNAL_STORAGE "/sdcard" \
+		--setenv ANDROID_ASSETS "assets" \
+		--setenv ANDROID_PRIVATE "/data/data/${PACKAGE_NAME}" \
+		--setenv LD_LIBRARY_PATH "/system/lib64:/system/lib" \
+		--setenv LANG "C" \
+		--setenv LC_ALL "C" \
+		--setenv PROOT_NO_SECCOMP "1" \
+		--setenv PROOT_VERBOSE "3" \
+		--setenv TERMUX_VERSION "0.118.0" \
+		--setenv TERMUX_APP_PACKAGE "${PACKAGE_NAME}" \
+		--setenv TERMUX_PREFIX "${INSTALLATION_DIR}" \
+		--setenv TERMUX_HOME "${APP_FILES}/home" \
+		--setenv PREFIX "${INSTALLATION_DIR}" \
+		--setenv ANDROID_DATA_ROOT "/data" \
+		--setenv ANDROID_CACHE "/data/data/${PACKAGE_NAME}/cache" \
+		--setenv ANDROID_SOCKET "unix" \
+		--setenv NIX_REMOTE "" \
+		--setenv NIX_CONF_DIR "${APP_FILES}/home/.config/nix" \
+		/system/bin/sh -c "
+			exec ${INSTALLATION_DIR}/bin/proot \\
+				-b ${INSTALLATION_DIR}/nix:/nix \\
+				-b ${INSTALLATION_DIR}/root:/root \\
+				-b ${INSTALLATION_DIR}/run:/run \\
+				-b ${INSTALLATION_DIR}/bin:/bin! \\
+				-b ${INSTALLATION_DIR}/etc:/etc! \\
+				-b ${INSTALLATION_DIR}/tmp:/tmp \\
+				-b ${INSTALLATION_DIR}/usr:/usr \\
+				-b ${INSTALLATION_DIR}/var:/var \\
+				-b ${INSTALLATION_DIR}/dev/shm:/dev/shm \\
+				-b /dev/pts:/dev/pts \\
+				--link2symlink --sysvipc --ashmem-memfd --kernel-release=5.4.254 \\
+				/system/bin/sh -c '
+					iteration=0
+					while [ \"\$iteration\" -lt 128 ]; do
+						/system/bin/sh -c \"exit 0\"
+						iteration=\$((iteration + 1))
+					done
+					echo \"[LOG] direct exec smoke completed\"
+				'
+		"
+fi
+
 echo "[LOG] Launching Android bwrap sandbox and executing nix-on-droid login"
 exec "${BWRAP_CMD[@]}" \
 	--tmpfs /storage \
