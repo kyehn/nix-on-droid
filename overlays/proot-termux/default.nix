@@ -31,6 +31,8 @@ stdenv.mkDerivation (finalAttrs: {
     # and disabled all substituters.  Answer RTM_GETLINK / RTM_GETADDR
     # from an RTM_GETADDR dump plus SIOCGIF* ioctls instead.
     ./fake-netlink-addr-relay.patch
+    # Keep every synthetic stack adjustment 16-byte aligned on AArch64.
+    ./stack-alignment.patch
   ];
 
   # Apply source modifications to fix loader bloat, seccomp offsets, and 32-bit linker errors.
