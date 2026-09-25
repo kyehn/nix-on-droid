@@ -167,6 +167,17 @@ if [[ "${PROOT_DIRECT_SMOKE:-0}" == "1" ]]; then
 		"
 fi
 
+if [[ "${PROOT_EXEC_STRESS:-1}" == "1" ]]; then
+	exec 0< <(
+		printf '%s\n' \
+			'iteration=0' \
+			'while [ "$iteration" -lt 128 ]; do' \
+			'  /bin/bash -c "exit 0"' \
+			'  iteration=$((iteration + 1))' \
+			'done'
+	)
+fi
+
 echo "[LOG] Launching Android bwrap sandbox and executing nix-on-droid login"
 exec "${BWRAP_CMD[@]}" \
 	--tmpfs /storage \
