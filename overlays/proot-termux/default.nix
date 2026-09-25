@@ -178,6 +178,14 @@ stdenv.mkDerivation (finalAttrs: {
     "$PROOT_BIN" -b spoofed_content.txt:/etc/fake_spoof.txt sh -c "cat /etc/fake_spoof.txt"
     "$PROOT_BIN" -R / -0 sh -c "id -u"
 
+    STACK_ALIGNMENT_STRESS_ITERATIONS=32
+    iteration=0
+    while [ "$iteration" -lt "$STACK_ALIGNMENT_STRESS_ITERATIONS" ]; do
+      "$PROOT_BIN" -b /:/ sh -c "exit 0"
+      iteration=$((iteration + 1))
+    done
+    echo "Stack alignment stress works"
+
     runHook postInstallCheck
   '';
 
