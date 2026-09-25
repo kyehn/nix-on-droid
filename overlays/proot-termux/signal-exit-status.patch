@@ -1,0 +1,14 @@
+Preserve the conventional shell status when a tracee is terminated by a signal.
+Without this assignment, a previously completed child can leave last_exit_status at
+zero and make a later signal termination look successful.
+
+--- a/src/tracee/event.c
++++ b/src/tracee/event.c
+@@ -493,6 +493,7 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
+ 		terminate_tracee(tracee);
+ 	}
+ 	else if (WIFSIGNALED(tracee_status)) {
++		last_exit_status = 128 + WTERMSIG(tracee_status);
+ 		check_architecture(tracee);
+ 		VERBOSE(tracee, (int) (tracee->vpid != 1),
+ 			"vpid %" PRIu64 ": terminated with signal %d",
