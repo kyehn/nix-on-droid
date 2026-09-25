@@ -83,6 +83,9 @@ sudo chown --recursive 0:0 "${WORKSPACE}/data"
 BWRAP_CMD=(sudo "${BWRAP_BIN}" --unshare-pid --unshare-ipc --unshare-uts --unshare-cgroup --unshare-user --uid "${DROID_UID}" --gid "${DROID_GID}" --hostname android-sim)
 
 SMOKE_CONFIG="${WORKSPACE}${APP_FILES}/smoke-config.toml"
+SMOKE_BASH=$(find "${WORKSPACE}${INSTALLATION_DIR}/nix/store" -type f -path '*/bash-interactive-*/bin/bash' | head -n 1)
+test -n "${SMOKE_BASH}"
+SMOKE_BASH_GUEST="/${SMOKE_BASH#${WORKSPACE}${INSTALLATION_DIR}/}"
 sudo tee "${SMOKE_CONFIG}" >/dev/null <<EOF
 installation_dir = "${INSTALLATION_DIR}"
 [first_run]
@@ -92,7 +95,7 @@ enable = false
 [user]
 name = "nix-on-droid"
 home = "${APP_FILES}/home"
-shell = "/nix/store/z9nkwcylvgcrn4dvvd91jp8blv3mx38v-bash-interactive-5.3p15/bin/bash"
+shell = "${SMOKE_BASH_GUEST}"
 EOF
 
 if [[ "${PROOT_DIRECT_SMOKE:-1}" == "1" ]]; then
