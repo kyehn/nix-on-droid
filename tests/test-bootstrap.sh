@@ -80,7 +80,7 @@ sudo chown --recursive 0:0 "${WORKSPACE}/data"
 
 BWRAP_CMD=(sudo "${BWRAP_BIN}" --unshare-pid --unshare-ipc --unshare-uts --unshare-cgroup --unshare-user --uid "${DROID_UID}" --gid "${DROID_GID}" --hostname android-sim)
 
-if [[ "${PROOT_DIRECT_SMOKE:-0}" == "1" ]]; then
+if [[ "${PROOT_DIRECT_SMOKE:-1}" == "1" ]]; then
 	echo "[LOG] Running direct AArch64 proot exec smoke test"
 	exec "${BWRAP_CMD[@]}" \
 		--tmpfs /storage \
