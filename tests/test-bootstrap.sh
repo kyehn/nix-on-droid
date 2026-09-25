@@ -124,7 +124,7 @@ if [[ "${PROOT_DIRECT_SMOKE:-1}" == "1" ]]; then
 		--setenv NIX_REMOTE "" \
 		--setenv NIX_CONF_DIR "${APP_FILES}/home/.config/nix" \
 		/system/bin/sh -c "
-			exec ${INSTALLATION_DIR}/bin/proot \\
+			exec ${INSTALLATION_DIR}/bin/proot.new \\
 				-b ${INSTALLATION_DIR}/nix:/nix \\
 				-b ${INSTALLATION_DIR}/root:/root \\
 				-b ${INSTALLATION_DIR}/run:/run \\
