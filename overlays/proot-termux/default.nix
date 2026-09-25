@@ -24,7 +24,6 @@ stdenv.mkDerivation (finalAttrs: {
     ./android-seccomp-self-compat.patch
     # ...and the enter-stop rewrite that converts guest syscalls the
     # zygote KILL filter forbids before the filter ever evaluates them.
-    ./android-seccomp-guest-rewrite.patch
     # Android untrusted_app denies RTM_GETLINK (nlmsg_readpriv) and
     # netlink bind(2), so getifaddrs(3) fails and the fake-netlink
     # replies degraded to loopback-only -- nix then saw "no Internet"

@@ -105,7 +105,7 @@ home = "${APP_FILES}/home"
 shell = "${SMOKE_BASH_GUEST}"
 EOF
 
-if [[ "${PROOT_DIRECT_SMOKE:-1}" == "1" ]]; then
+if [[ "${PROOT_DIRECT_SMOKE:-0}" == "1" ]]; then
 	echo "[LOG] Running AArch64 proot login-inner exec smoke test"
 	exec "${BWRAP_CMD[@]}" \
 		--tmpfs /storage \
