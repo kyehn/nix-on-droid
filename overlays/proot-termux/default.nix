@@ -100,7 +100,8 @@ stdenv.mkDerivation (finalAttrs: {
     # Applying `-n` on x86_64 breaks the ELF loader segment layout and causes SIGSEGV (signal 11).
     + lib.optionalString stdenv.hostPlatform.isAarch64 ''
       substituteInPlace src/GNUmakefile \
-        --replace-fail ",-Ttext" ",-n,-Ttext"
+        --replace-fail ",-Ttext" ",-n,-Ttext" \
+        --replace-fail '$$(Q)cp $$< $$@' '$$(Q)cp $$< $$@ && printf '"'"'\x00\x00\x01\x00\x00\x00\x00\x00'"'"' | dd of=$$@ bs=1 seek=112 count=8 conv=notrunc 2>/dev/null'
     '';
 
   # Generate mocked ashmem header for proot internals

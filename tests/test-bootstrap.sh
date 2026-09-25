@@ -199,6 +199,7 @@ exec "${BWRAP_CMD[@]}" \
 	--setenv LANG "C" \
 	--setenv LC_ALL "C" \
 	--setenv PROOT_NO_SECCOMP "1" \
+	--setenv PROOT_VERBOSE "3" \
 	--setenv TERMUX_VERSION "0.118.0" \
 	--setenv TERMUX_APP_PACKAGE "${PACKAGE_NAME}" \
 	--setenv TERMUX_PREFIX "${INSTALLATION_DIR}" \
