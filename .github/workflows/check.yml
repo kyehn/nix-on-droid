@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - unstable
+      - beta
   workflow_dispatch:
 jobs:
   check:

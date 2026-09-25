@@ -10,6 +10,7 @@ on:
         options:
           - ""
           - bootstrap-unstable
+          - bootstrap-beta
 permissions:
   contents: write
 jobs:
