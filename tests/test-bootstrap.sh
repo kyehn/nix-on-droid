@@ -80,8 +80,21 @@ sudo chown --recursive 0:0 "${WORKSPACE}/data"
 
 BWRAP_CMD=(sudo "${BWRAP_BIN}" --unshare-pid --unshare-ipc --unshare-uts --unshare-cgroup --unshare-user --uid "${DROID_UID}" --gid "${DROID_GID}" --hostname android-sim)
 
+SMOKE_CONFIG="${WORKSPACE}${APP_FILES}/smoke-config.toml"
+cat >"${SMOKE_CONFIG}" <<EOF
+installation_dir = "${INSTALLATION_DIR}"
+[first_run]
+enable = false
+[process_compose]
+enable = false
+[user]
+name = "nix-on-droid"
+home = "${APP_FILES}/home"
+shell = "/bin/bash"
+EOF
+
 if [[ "${PROOT_DIRECT_SMOKE:-1}" == "1" ]]; then
-	echo "[LOG] Running direct AArch64 proot exec smoke test"
+	echo "[LOG] Running AArch64 proot login-inner exec smoke test"
 	exec "${BWRAP_CMD[@]}" \
 		--tmpfs /storage \
 		--tmpfs /vendor \
@@ -136,14 +149,8 @@ if [[ "${PROOT_DIRECT_SMOKE:-1}" == "1" ]]; then
 				-b ${INSTALLATION_DIR}/dev/shm:/dev/shm \\
 				-b /dev/pts:/dev/pts \\
 				--link2symlink --sysvipc --ashmem-memfd --kernel-release=5.4.254 \\
-				/system/bin/sh -c '
-					iteration=0
-					while [ \"\$iteration\" -lt 128 ]; do
-						/system/bin/sh -c \"exit 0\"
-						iteration=\$((iteration + 1))
-					done
-					echo \"[LOG] direct exec smoke completed\"
-				'
+				${INSTALLATION_DIR}/bin/login-inner.new \\
+				--config /data/data/com.termux/files/smoke-config.toml
 		"
 fi
 
