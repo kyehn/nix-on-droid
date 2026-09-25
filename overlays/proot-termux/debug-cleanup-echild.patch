@@ -1,0 +1,15 @@
+--- a/src/tracee/event.c
++++ b/src/tracee/event.c
+@@ -414,6 +414,12 @@ int event_loop()
+ 			if (errno != ECHILD) {
+ 				note(tracee, ERROR, SYSTEM, "waitpid()");
+ 				return EXIT_FAILURE;
+ 			}
++			/* No tracee can produce another event after ECHILD.  Free
++			 * any entries whose final status was consumed by an
++			 * extension, otherwise the process-wide talloc leak report
++			 * exposes a stale Tracee at exit. */
++			while (get_tracees_list_head()->lh_first != NULL)
++				TALLOC_FREE(get_tracees_list_head()->lh_first);
+ 			break;
+ 		}
