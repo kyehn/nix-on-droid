@@ -1,0 +1,11 @@
+--- a/src/tracee/event.c
++++ b/src/tracee/event.c
+@@ -493,6 +493,10 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
+ 	}
+ 	else if (WIFSIGNALED(tracee_status)) {
++		note(tracee, ERROR, INTERNAL,
++			"[DEBUG-arm-signal] vpid=%" PRIu64 " pid=%d exe=%s signal=%d",
++			tracee->vpid, tracee->pid,
++			tracee->exe != NULL ? tracee->exe : "(null)", WTERMSIG(tracee_status));
+ 		last_exit_status = 128 + WTERMSIG(tracee_status);
+ 		check_architecture(tracee);

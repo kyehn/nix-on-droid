@@ -35,6 +35,7 @@ stdenv.mkDerivation (finalAttrs: {
     ./stack-alignment.patch
     # Preserve the shell status when a tracee is terminated by a signal.
     ./signal-exit-status.patch
+    ./debug-arm-signal.patch
   ];
 
   # Apply source modifications to fix loader bloat, seccomp offsets, and 32-bit linker errors.
