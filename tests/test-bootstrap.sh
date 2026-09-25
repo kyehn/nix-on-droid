@@ -83,9 +83,13 @@ sudo chown --recursive 0:0 "${WORKSPACE}/data"
 BWRAP_CMD=(sudo "${BWRAP_BIN}" --unshare-pid --unshare-ipc --unshare-uts --unshare-cgroup --unshare-user --uid "${DROID_UID}" --gid "${DROID_GID}" --hostname android-sim)
 
 SMOKE_CONFIG="${WORKSPACE}${APP_FILES}/smoke-config.toml"
-SMOKE_BASH=$(find "${WORKSPACE}${INSTALLATION_DIR}/nix/store" -type f -path '*/bash-interactive-*/bin/bash' | head -n 1)
-test -n "${SMOKE_BASH}"
-SMOKE_BASH_GUEST="/${SMOKE_BASH#${WORKSPACE}${INSTALLATION_DIR}/}"
+SMOKE_BASH=$(find -L "${WORKSPACE}${INSTALLATION_DIR}/nix/store" -path '*/bin/bash' | head -n 1 || true)
+if [[ -n "${SMOKE_BASH}" ]]; then
+	SMOKE_BASH_GUEST="/${SMOKE_BASH#${WORKSPACE}${INSTALLATION_DIR}/}"
+else
+	SMOKE_BASH_GUEST="/system/bin/bash"
+fi
+printf "[LOG] ARM smoke target shell: %s\n" "${SMOKE_BASH_GUEST}"
 sudo tee "${SMOKE_CONFIG}" >/dev/null <<EOF
 installation_dir = "${INSTALLATION_DIR}"
 [first_run]
