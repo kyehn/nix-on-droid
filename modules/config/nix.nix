@@ -62,7 +62,6 @@ in
           )
         }
         nix-path = nixpkgs=${inputs.nixpkgs}
-        auto-optimise-store = true
       '';
       example = ''
         keep-outputs = true
