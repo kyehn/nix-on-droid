@@ -92,7 +92,7 @@ enable = false
 [user]
 name = "nix-on-droid"
 home = "${APP_FILES}/home"
-shell = "/system/bin/bash"
+shell = "/nix/store/7a60q5dgnv6z96c279rc1nalyiw4mgqn-bash-interactive-5.3p15/bin/bash"
 EOF
 
 if [[ "${PROOT_DIRECT_SMOKE:-1}" == "1" ]]; then
