@@ -26,7 +26,9 @@ mkdir --parents "${WORKSPACE}/system/bin" \
 	"${WORKSPACE}/system/lib64" \
 	"${WORKSPACE}/system/usr" \
 	"${WORKSPACE}/data/local/tmp" \
-	"${WORKSPACE}${APP_FILES}/home"
+	"${WORKSPACE}${APP_FILES}/home" \
+	"${WORKSPACE}${INSTALLATION_DIR}/tmp" \
+	"${WORKSPACE}${INSTALLATION_DIR}/dev/shm"
 
 chmod --recursive 0755 "${WORKSPACE}"
 chmod 1777 "${WORKSPACE}/data/local/tmp"
