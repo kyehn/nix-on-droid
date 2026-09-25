@@ -89,15 +89,8 @@ buildGoModule (finalAttrs: {
               ];
             }
             {
-              argv0 = lib.getExe nix;
+              argv0 = lib.getExe config.system.build.nixos-rebuild;
               argv = [
-                "--extra-experimental-features"
-                "nix-command"
-                "--extra-experimental-features"
-                "flakes"
-                "run"
-                "nixpkgs#nixos-rebuild-ng"
-                "--"
                 "switch"
                 "--flake"
                 "${config.users.users.nix-on-droid.home}/.config/nix-on-droid/template#default"
