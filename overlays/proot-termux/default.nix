@@ -24,6 +24,7 @@ stdenv.mkDerivation (finalAttrs: {
     ./android-seccomp-self-compat.patch
     # ...and the enter-stop rewrite that converts guest syscalls the
     # zygote KILL filter forbids before the filter ever evaluates them.
+    ./android-seccomp-guest-rewrite.patch
     # Android untrusted_app denies RTM_GETLINK (nlmsg_readpriv) and
     # netlink bind(2), so getifaddrs(3) fails and the fake-netlink
     # replies degraded to loopback-only -- nix then saw "no Internet"
@@ -99,8 +100,7 @@ stdenv.mkDerivation (finalAttrs: {
     # Applying `-n` on x86_64 breaks the ELF loader segment layout and causes SIGSEGV (signal 11).
     + lib.optionalString stdenv.hostPlatform.isAarch64 ''
       substituteInPlace src/GNUmakefile \
-        --replace-fail ",-Ttext" ",-n,-Ttext" \
-        --replace-fail '$$(Q)cp $$< $$@' '$$(Q)cp $$< $$@ && printf '"'"'\x00\x00\x01\x00\x00\x00\x00\x00'"'"' | dd of=$$@ bs=1 seek=112 count=8 conv=notrunc 2>/dev/null'
+        --replace-fail ",-Ttext" ",-n,-Ttext"
     '';
 
   # Generate mocked ashmem header for proot internals
