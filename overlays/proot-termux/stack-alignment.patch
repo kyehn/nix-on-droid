@@ -5,10 +5,9 @@ align stacks allocated by alloc_mem() or moved by the kompat extension.
 Those omissions can leave an AArch64 process with a misaligned stack and
 cause an intermittent SIGSEGV.
 
-diff --git a/src/arch.h b/src/arch.h
 --- a/src/arch.h
 +++ b/src/arch.h
-@@ -33,6 +33,7 @@ typedef unsigned char byte_t;
+@@ -33,6 +33,7 @@
  
  #define SYSCALL_AVOIDER ((word_t) -2)
  #define SYSTRAP_NUM SYSARG_NUM
@@ -16,11 +15,9 @@ diff --git a/src/arch.h b/src/arch.h
  
  #if !defined(ARCH_X86_64) && !defined(ARCH_ARM_EABI) && !defined(ARCH_X86) && !defined(ARCH_SH4)
  #    if defined(__x86_64__)
-
-diff --git a/src/extension/kompat/kompat.c b/src/extension/kompat/kompat.c
 --- a/src/extension/kompat/kompat.c
 +++ b/src/extension/kompat/kompat.c
-@@ -590,6 +590,7 @@ static void adjust_elf_auxv(Tracee *tracee, Config *config)
+@@ -592,6 +592,7 @@
  	word_t stack_pointer;
  	void *argv_envp;
  	size_t size;
@@ -28,10 +25,7 @@ diff --git a/src/extension/kompat/kompat.c b/src/extension/kompat/kompat.c
  	int status;
  
  	vectors_address = get_elf_aux_vectors_address(tracee);
-@@ -655,10 +655,12 @@ static void adjust_elf_auxv(Tracee *tracee, Config *config)
- 	status = read_data(tracee, argv_envp, stack_pointer, size);
- 	if (status < 0)
- 		goto end;
+@@ -658,8 +659,10 @@
  
  	/* Allocate enough room in tracee's stack for the new ELF
  	 * auxiliary vector.  */
@@ -41,14 +35,12 @@ diff --git a/src/extension/kompat/kompat.c b/src/extension/kompat/kompat.c
 +	reserve_size = ((reserve_size - 1) / STACK_ALIGNMENT + 1) * STACK_ALIGNMENT;
 +	stack_pointer   -= reserve_size;
 +	vectors_address -= reserve_size;
-
+ 
  	/* Note that it is safe to update the stack pointer manually
  	 * since we are in execve sysexit.  However it should be done
-
-diff --git a/src/tracee/mem.c b/src/tracee/mem.c
 --- a/src/tracee/mem.c
 +++ b/src/tracee/mem.c
-@@ -655,6 +655,9 @@ word_t alloc_mem(Tracee *tracee, ssize_t size)
+@@ -655,6 +655,9 @@
  	if (stack_pointer == peek_reg(tracee, ORIGINAL, STACK_POINTER))
  		size += RED_ZONE_SIZE;
  
@@ -58,27 +50,22 @@ diff --git a/src/tracee/mem.c b/src/tracee/mem.c
  	/* Sanity check. */
  	if (   (size > 0 && stack_pointer <= (word_t) size)
  	    || (size < 0 && stack_pointer >= ULONG_MAX + size)) {
-
-diff --git a/src/execve/exit.c b/src/execve/exit.c
 --- a/src/execve/exit.c
 +++ b/src/execve/exit.c
-@@ -230,16 +230,10 @@ static int transfer_load_script(Tracee *tracee)
- 	string3_size = (tracee->load_info->raw_path == tracee->load_info->user_path ? 0
+@@ -231,15 +231,9 @@
  			: strlen(tracee->load_info->raw_path) + 1);
  
--	/* A padding will be appended at the end of the load script
+ 	/* A padding will be appended at the end of the load script
 -	 * (a.k.a "strings area") to ensure this latter is aligned to
 -	 * a word boundary, for the sake of performance
 -	 * (or 16 bytes, since AArch64 needs SP 16-bytes-aligned). */
--	padding_size = (stack_pointer - string1_size - string2_size - string3_size)
++	 * (a.k.a "strings area") to ensure this latter is aligned properly. */
+ 	padding_size = (stack_pointer - string1_size - string2_size - string3_size)
 -#ifdef ARCH_ARM64
 -		        % 16;
 -#else
 -			% sizeof_word(tracee);
 -#endif
-+	/* A padding will be appended at the end of the load script
-+	 * (a.k.a "strings area") to ensure this latter is aligned properly. */
-+	padding_size = (stack_pointer - string1_size - string2_size - string3_size)
 +			% STACK_ALIGNMENT;
  
  	strings_size = string1_size + string2_size + string3_size + padding_size;
