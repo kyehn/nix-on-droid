@@ -120,6 +120,8 @@ if [[ "${PROOT_DIRECT_SMOKE:-1}" == "1" ]]; then
 		--setenv TERM "xterm-256color" \
 		--setenv TMPDIR "${INSTALLATION_DIR}/tmp" \
 		--setenv TEMP "${INSTALLATION_DIR}/tmp" \
+		--setenv PROOT_TMP_DIR "${INSTALLATION_DIR}/tmp" \
+		--setenv PROOT_L2S_DIR "${INSTALLATION_DIR}/.l2s" \
 		--setenv EXTERNAL_STORAGE "/sdcard" \
 		--setenv ANDROID_ASSETS "assets" \
 		--setenv ANDROID_PRIVATE "/data/data/${PACKAGE_NAME}" \
