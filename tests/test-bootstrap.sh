@@ -83,7 +83,7 @@ sudo chown --recursive 0:0 "${WORKSPACE}/data"
 BWRAP_CMD=(sudo "${BWRAP_BIN}" --unshare-pid --unshare-ipc --unshare-uts --unshare-cgroup --unshare-user --uid "${DROID_UID}" --gid "${DROID_GID}" --hostname android-sim)
 
 SMOKE_CONFIG="${WORKSPACE}${APP_FILES}/smoke-config.toml"
-cat >"${SMOKE_CONFIG}" <<EOF
+sudo tee "${SMOKE_CONFIG}" >/dev/null <<EOF
 installation_dir = "${INSTALLATION_DIR}"
 [first_run]
 enable = false
