@@ -76,7 +76,7 @@ argv = [
   "new",
   "/data/data/com.termux.nix/files/home/.config/nix-on-droid/template",
   "--template",
-  "github:kyehn/nix-on-droid/unstable",
+  "github:kyehn/nix-on-droid/beta",
 ]
 argv0 = "/nix/store/16yqm9lwrf0n11k3sphl2i8dp9r4k4kd-nix-2.34.7/bin/nix"
 
