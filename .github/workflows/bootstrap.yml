@@ -36,9 +36,7 @@ jobs:
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
       - run: rm -f ~/.config/nix/nix.conf
       - run: |
-          sed -i '/users\.users\.nix-on-droid\.shell = lib.getExe pkgs\.bash;/a users.users.nix-on-droid.uid = lib.mkForce 10377;' template/nix-on-droid.nix
-          sed -i '/users\.users\.nix-on-droid\.shell = lib.getExe pkgs\.bash;/a users.groups.nix-on-droid.gid = lib.mkForce 10377;' template/nix-on-droid.nix
-          nix build --verbose --print-build-logs --impure --print-out-paths ./template#nixosConfigurations.default.config.system.build.toplevel --override-input nix-on-droid path:.
+          nix build --verbose --print-build-logs --impure --print-out-paths ./template#nixosConfigurations.default.config.system.build.toplevel
           nix build --verbose --print-build-logs --impure --print-out-paths .#bootstrap-zip
       - run: bash tests/test-bootstrap.sh
         env:
