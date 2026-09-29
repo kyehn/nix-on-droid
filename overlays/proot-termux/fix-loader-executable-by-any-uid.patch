@@ -1,0 +1,15 @@
+diff --git a/src/execve/enter.c b/src/execve/enter.c
+index 496d014..39cae6c 100644
+--- a/src/execve/enter.c
++++ b/src/execve/enter.c
+@@ -512,7 +512,9 @@ static char *extract_loader(const Tracee *tracee, bool wants_32bit_version)
+ 		goto end;
+ 	}
+ 
+-	status = fchmod(fd, S_IRUSR|S_IXUSR);
++	/* The loader is executed by tracees running as any uid, so it
++	 * must stay world r-x. */
++	status = fchmod(fd, S_IRUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH);
+ 	if (status < 0) {
+ 		note(tracee, ERROR, SYSTEM, "can't change loader permissions (u+rx)");
+ 		goto end;

@@ -1,0 +1,13 @@
+diff --git a/src/extension/fake_id0/fake_id0.c b/src/extension/fake_id0/fake_id0.c
+index 9bd8dad..065344f 100644
+--- a/src/extension/fake_id0/fake_id0.c
++++ b/src/extension/fake_id0/fake_id0.c
+@@ -76,7 +76,7 @@
+  * Copy config->@field to the tracee's memory location pointed to by @sysarg.
+  */
+ #define POKE_MEM_ID(sysarg, field) do {					\
+-	poke_uint16(tracee, peek_reg(tracee, ORIGINAL, sysarg), config->field);	\
++	poke_uint32(tracee, peek_reg(tracee, ORIGINAL, sysarg), config->field);	\
+ 	if (errno != 0)							\
+ 		return -errno;						\
+ } while (0)

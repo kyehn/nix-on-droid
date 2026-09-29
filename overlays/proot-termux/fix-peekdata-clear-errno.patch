@@ -1,0 +1,19 @@
+diff --git a/src/tracee/mem.c b/src/tracee/mem.c
+--- a/src/tracee/mem.c
++++ b/src/tracee/mem.c
+@@ -387,6 +387,7 @@ int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee, word_t
+ 	/* Copy the bytes from the last word carefully since we have
+ 	 * to not overwrite the bytes lying beyond @dest_tracer. */
+ 
++	errno = 0;
+ 	word = ptrace(PTRACE_PEEKDATA, tracee->pid, src + i, NULL);
+ 	if (errno != 0) {
+ 		note(tracee, WARNING, SYSTEM, "ptrace(PEEKDATA)");
+@@ -519,6 +520,7 @@ fallback:
+ 	/* Copy the bytes from the last word carefully since we have
+ 	 * to not overwrite the bytes lying beyond @dest_tracer. */
+ 
++	errno = 0;
+ 	word = ptrace(PTRACE_PEEKDATA, tracee->pid, src + i, NULL);
+ 	if (errno != 0)
+ 		return -EFAULT;

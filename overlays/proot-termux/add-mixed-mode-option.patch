@@ -1,0 +1,77 @@
+diff --git a/src/cli/proot.c b/src/cli/proot.c
+index eb92071..0b550e1 100644
+--- a/src/cli/proot.c
++++ b/src/cli/proot.c
+@@ -144,6 +144,12 @@ static int handle_option_q(Tracee *tracee, const Cli *cli UNUSED, const char *va
+ 	return 0;
+ }
+ 
++static int handle_option_mixed_mode(Tracee *tracee, const Cli *cli UNUSED, const char *value UNUSED)
++{
++	tracee->mixed_mode = true;
++	return 0;
++}
++
+ static int handle_option_w(Tracee *tracee, const Cli *cli UNUSED, const char *value)
+ {
+ 	tracee->fs->cwd = talloc_strdup(tracee->fs, value);
+diff --git a/src/cli/proot.h b/src/cli/proot.h
+index 6ec5036..5ec85d0 100644
+--- a/src/cli/proot.h
++++ b/src/cli/proot.h
+@@ -52,6 +52,7 @@ static int handle_option_r(Tracee *tracee, const Cli *cli, const char *value);
+ static int handle_option_b(Tracee *tracee, const Cli *cli, const char *value);
+ static int handle_option_q(Tracee *tracee, const Cli *cli, const char *value);
+ static int handle_option_w(Tracee *tracee, const Cli *cli, const char *value);
++static int handle_option_mixed_mode(Tracee *tracee, const Cli *cli, const char *value);
+ static int handle_option_v(Tracee *tracee, const Cli *cli, const char *value);
+ static int handle_option_V(Tracee *tracee, const Cli *cli, const char *value);
+ static int handle_option_h(Tracee *tracee, const Cli *cli, const char *value);
+@@ -139,6 +140,18 @@ Copyright (C) 2015 STMicroelectronics, licensed under GPL v2 or later.",
+ \temulated by QEMU user-mode.  The native execution of host programs\n\
+ \tis still effective and the whole host rootfs is bound to\n\
+ \t/host-rootfs in the guest environment.",
++	},
++	{ .class = "Regular options",
++	  .arguments = {
++		{ .name = "--mixed-mode", .separator = '\0', .value = NULL },
++		{ .name = NULL, .separator = '\0', .value = NULL } },
++	  .handler = handle_option_mixed_mode,
++	  .description = "Disable the mixed-execution feature.",
++	  .detail = "\tBy default an ELF executable that looks native to the host is\n\
++\trun as-is instead of being emulated.  This option forces every\n\
++\texecutable through the same emulation, which is what programs run\n\
++\tunder a custom QEMU user-mode emulator or a substituted\n\
++\tLD_LIBRARY_PATH need.",
+ 	},
+ 	{ .class = "Regular options",
+ 	  .arguments = {
+diff --git a/src/execve/enter.c b/src/execve/enter.c
+index 496d014..f976180 100644
+--- a/src/execve/enter.c
++++ b/src/execve/enter.c
+@@ -382,8 +382,8 @@ static int expand_runner(Tracee* tracee, char host_path[PATH_MAX], char user_pat
+ 	envp->compare_xpointee = (compare_xpointee_t) compare_xpointee_env;
+ 
+ 	/* No need to adjust argv[] if it's a host binary (a.k.a
+-	 * mixed-mode).  */
+-	if (!is_host_elf(tracee, host_path)) {
++	 * mixed-mode), unless mixed-mode was explicitly disabled.  */
++	if (!tracee->mixed_mode && !is_host_elf(tracee, host_path)) {
+ 		ArrayOfXPointers *argv;
+ 		size_t nb_qemu_args;
+ 		size_t i;
+diff --git a/src/tracee/tracee.h b/src/tracee/tracee.h
+index eaf8625..e702010 100644
+--- a/src/tracee/tracee.h
++++ b/src/tracee/tracee.h
+@@ -286,6 +286,9 @@ typedef struct tracee {
+ 	 * execve sysexit.  */
+ 	struct load_info *load_info;
+ 
++	/* Disable the mixed-execution (native host binary) check.  */
++	bool mixed_mode;
++
+ 	/* Address of argv[0] string in the tracee's initial stack, captured
+ 	 * at execve sysexit. Used to fix AT_EXECFN in prctl(PR_GET_AUXV)
+ 	 * responses: the kernel's saved auxv has AT_EXECFN pointing to the

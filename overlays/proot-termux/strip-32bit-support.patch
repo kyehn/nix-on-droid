@@ -1,0 +1,89 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: nix-on-droid <nix-on-droid@local>
+Date: Mon, 29 Sep 2026 00:00:00 +0000
+Subject: [PATCH] build: strip 32-bit support for pure 64-bit static builds
+
+This derivation builds a pure 64-bit static proot (musl/LLVM).  The
+second ABI in every SECCOMP_ARCHS table exists only to translate
+32-bit guests, and the -m32 loader build links the 64-bit libunwind
+into a 32-bit image, which fails to link.  Remove them at the source:
+
+- Drop SYSNUMS_HEADER2/HEADER3 and SYSNUMS_ABI2/ABI3: sysnum.c
+  already guards every use with #ifdef, so the secondary tables
+  simply vanish (no BPF is generated for them).
+- Collapse each SECCOMP_ARCHS table to its single native entry.
+- Delete both `#define HAS_LOADER_32BIT true`: every C consumer
+  tests definedness (`#if defined`), and GNUmakefile gates every
+  loader-m32 rule on `ifdef HAS_LOADER_32BIT` (fed from arch.h via
+  define_from_arch.h), so undefining the macro disables the -m32
+  loader build, its object rules, and its install lines all at once.
+  Note a literal `false` value would NOT work: `ifdef` treats any
+  value, including `false`, as defined.
+
+---
+ src/arch.h |   12 +-----------
+ 1 file changed, 1 insertion(+), 11 deletions(-)
+
+diff --git a/src/arch.h b/src/arch.h
+index 06b7f1b..6856572 100644
+--- a/src/arch.h
++++ b/src/arch.h
+@@ -56,20 +56,15 @@ typedef unsigned char byte_t;
+ #if defined(ARCH_X86_64)
+ 
+     #define SYSNUMS_HEADER1 "syscall/sysnums-x86_64.h"
+-    #define SYSNUMS_HEADER2 "syscall/sysnums-i386.h"
+-    #define SYSNUMS_HEADER3 "syscall/sysnums-x32.h"
+ 
+     #define SYSNUMS_ABI1 sysnums_x86_64
+-    #define SYSNUMS_ABI2 sysnums_i386
+-    #define SYSNUMS_ABI3 sysnums_x32
+ 
+     #undef  SYSTRAP_NUM
+     #define SYSTRAP_NUM SYSARG_RESULT
+     #define SYSTRAP_SIZE 2
+ 
+     #define SECCOMP_ARCHS {									\
+-		{ .value = AUDIT_ARCH_X86_64, .nb_abis = 2, .abis = { ABI_DEFAULT, ABI_3 } },	\
+-		{ .value = AUDIT_ARCH_I386,   .nb_abis = 1, .abis = { ABI_2 } }, 		\
++		{ .value = AUDIT_ARCH_X86_64, .nb_abis = 1, .abis = { ABI_DEFAULT } },	\
+ 	}
+ 
+     #define HOST_ELF_MACHINE {62, 3, 6, 0}
+@@ -78,7 +73,6 @@ typedef unsigned char byte_t;
+     #define OFFSETOF_STAT_GID_32 28
+ 
+     #define LOADER_ADDRESS 0x600000000000
+-    #define HAS_LOADER_32BIT true
+ 
+     #define EXEC_PIC_ADDRESS   0x500000000000
+     #define INTERP_PIC_ADDRESS 0x6f0000000000
+@@ -114,10 +108,8 @@ typedef unsigned char byte_t;
+ #elif defined(ARCH_ARM64)
+ 
+     #define SYSNUMS_HEADER1 "syscall/sysnums-arm64.h"
+-    #define SYSNUMS_HEADER2 "syscall/sysnums-arm.h"
+ 
+     #define SYSNUMS_ABI1    sysnums_arm64
+-    #define SYSNUMS_ABI2    sysnums_arm
+ 
+     #define SYSTRAP_SIZE 4
+ 
+@@ -127,7 +119,6 @@ typedef unsigned char byte_t;
+ 
+     #define SECCOMP_ARCHS {									\
+ 		{ .value = AUDIT_ARCH_AARCH64, .nb_abis = 1, .abis = { ABI_DEFAULT } },	\
+-		{ .value = AUDIT_ARCH_ARM,     .nb_abis = 1, .abis = { ABI_2 } }, 		\
+ 	}
+ 
+     #define HOST_ELF_MACHINE {183, 0};
+@@ -140,7 +131,6 @@ typedef unsigned char byte_t;
+     #define INTERP_PIC_ADDRESS 0x3f00000000
+     #define HAS_POKEDATA_WORKAROUND true
+ 
+-    #define HAS_LOADER_32BIT true
+     #define EXEC_PIC_ADDRESS_32   0x0f000000
+     #define INTERP_PIC_ADDRESS_32 0x1f000000
+ 
+--
+2.53.0

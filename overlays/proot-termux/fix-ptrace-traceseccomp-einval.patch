@@ -1,0 +1,29 @@
+Backport proot-me/proot d92431a: reject PTRACE_O_TRACESECCOMP under
+ptrace emulation with -EINVAL.  PRoot never forwards seccomp traps to
+an emulated ptracee, so accepting the option would mislead the
+ptracer into waiting for events that never arrive.
+
+diff --git a/src/ptrace/ptrace.c b/src/ptrace/ptrace.c
+index dea477f..66b5519 100644
+--- a/src/ptrace/ptrace.c
++++ b/src/ptrace/ptrace.c
+@@ -265,6 +265,19 @@ int translate_ptrace_exit(Tracee *tracee)
+ 		break;  /* Restart the ptracee.  */
+ 
+ 	case PTRACE_SETOPTIONS:
++#ifdef PTRACE_O_TRACESECCOMP
++		if ((data & PTRACE_O_TRACESECCOMP) != 0) {
++			/* PRoot can't forward seccomp traps to its emulated
++			 * ptracee: fail loudly instead of letting the ptracer wait
++			 * for events that will never come (proot-me/d92431a).
++			 * Note @tracee, not @ptracer, is reported: @ptracer is only
++			 * assigned on the attach path and may be garbage here. */
++			note(tracee, WARNING, INTERNAL,
++			     "ptrace option PTRACE_O_TRACESECCOMP "
++			     "not supported yet");
++			return -EINVAL;
++		}
++#endif
+ 		PTRACEE.options = data;
+ 		return 0;  /* Don't restart the ptracee.  */
+ 

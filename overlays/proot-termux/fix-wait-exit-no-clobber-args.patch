@@ -1,0 +1,72 @@
+Backport proot-me/proot d8bf141 (second half): do not clobber the
+syscall result when a wait call is restarted.  translate_wait_exit()
+now reports through set_result whether the caller may write the
+result back; on ARM SYSARG_RESULT shares a register with SYSARG_1,
+so poking a restarted zero would corrupt the wait pid argument.
+
+diff --git a/src/ptrace/wait.c b/src/ptrace/wait.c
+index af447d1..8149003 100644
+--- a/src/ptrace/wait.c
++++ b/src/ptrace/wait.c
+@@ -178,8 +178,9 @@ static int update_wait_status(Tracee *ptracer, Tracee *ptracee)
+  * of the ptrace mechanism. This function returns -errno if an error
+  * occured, otherwise the pid of the expected tracee.
+  */
+-int translate_wait_exit(Tracee *ptracer)
++int translate_wait_exit(Tracee *ptracer, bool *set_result)
+ {
++	*set_result = true;
+ 	Tracee *ptracee;
+ 	word_t options;
+ 	int status;
+@@ -220,6 +221,14 @@ int translate_wait_exit(Tracee *ptracer)
+ 	}
+ 
+ 	status = update_wait_status(ptracer, ptracee);
++	/* update_wait_status() returns 0 when it restarted the original
++	 * syscall (see the restart_original_syscall path above), a pid on
++	 * success, and -errno on error.  In the restarted case do not touch
++	 * the result: not only is it unnecessary, it could overwrite a
++	 * syscall argument on ARM, where SYSARG_RESULT shares a register
++	 * with SYSARG_1. */
++	if (status == 0)
++		*set_result = false;
+ 	if (status < 0)
+ 		return status;
+ 
+diff --git a/src/ptrace/wait.h b/src/ptrace/wait.h
+index 8648f6f..25df29a 100644
+--- a/src/ptrace/wait.h
++++ b/src/ptrace/wait.h
+@@ -28,7 +28,7 @@
+ #include "tracee/tracee.h"
+ 
+ extern int translate_wait_enter(Tracee *ptracer);
+-extern int translate_wait_exit(Tracee *ptracer);
++extern int translate_wait_exit(Tracee *ptracer, bool *set_result);
+ extern bool handle_ptracee_event(Tracee *ptracee, int wait_status);
+ 
+ /* __WCLONE: Wait for "clone" children only.  If omitted then wait for
+diff --git a/src/syscall/exit.c b/src/syscall/exit.c
+index 2fe81b0..a22420d 100644
+--- a/src/syscall/exit.c
++++ b/src/syscall/exit.c
+@@ -654,12 +654,16 @@ void translate_syscall_exit(Tracee *tracee)
+ 		break;
+ 
+ 	case PR_wait4:
+-	case PR_waitpid:
++	case PR_waitpid: {
++		bool set_result = true;
+ 		if (tracee->as_ptracer.waits_in != WAITS_IN_PROOT)
+ 			goto end;
+ 
+-		status = translate_wait_exit(tracee);
++		status = translate_wait_exit(tracee, &set_result);
++		if (!set_result)
++			goto end;
+ 		break;
++	}
+ 
+ 	case PR_setrlimit:
+ 	case PR_prlimit64:

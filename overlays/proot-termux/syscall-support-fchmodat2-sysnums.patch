@@ -1,0 +1,85 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: nix-on-droid <nix-on-droid@local>
+Date: Mon, 29 Sep 2026 00:00:00 +0000
+Subject: [PATCH] syscall: add fchmodat2 to per-arch syscall tables
+
+Companion to syscall-support-fchmodat2.patch (which covers enter.c,
+seccomp.c and sysnums.list): map the fchmodat2 number (452 on every
+64-bit table carried here, including x32 where the kernel defines it
+as __X32_SYSCALL_BIT + 452) to PR_fchmodat2 so translate_sysnum()
+can recognise it.  Entries are appended at the tail (numerically
+ordered for x32); C designated initializers make position irrelevant.
+
+---
+ src/syscall/sysnums-arm.h    |    1 +
+ src/syscall/sysnums-arm64.h  |    1 +
+ src/syscall/sysnums-i386.h   |    1 +
+ src/syscall/sysnums-sh4.h    |    1 +
+ src/syscall/sysnums-x32.h    |    1 +
+ src/syscall/sysnums-x86_64.h |    1 +
+ 6 files changed, 6 insertions(+)
+
+diff --git a/src/syscall/sysnums-arm.h b/src/syscall/sysnums-arm.h
+index 3d05974..e3f6f6b 100644
+--- a/src/syscall/sysnums-arm.h
++++ b/src/syscall/sysnums-arm.h
+@@ -359,4 +359,5 @@ static const Sysnum sysnums_arm[] = {
+ 	[ 439 ] = PR_faccessat2,
+ 	[ 435 ] = PR_clone3,
+ 	[ 437 ] = PR_openat2,
++	[ 452 ] = PR_fchmodat2,
+ };
+diff --git a/src/syscall/sysnums-arm64.h b/src/syscall/sysnums-arm64.h
+index 15cfe4f..b257339 100644
+--- a/src/syscall/sysnums-arm64.h
++++ b/src/syscall/sysnums-arm64.h
+@@ -281,4 +281,5 @@ static const Sysnum sysnums_arm64[] = {
+ 	[ 435 ] = PR_clone3,
+ 	[ 437 ] = PR_openat2,
+ 	[ 439 ] = PR_faccessat2,
++	[ 452 ] = PR_fchmodat2,
+ };
+diff --git a/src/syscall/sysnums-i386.h b/src/syscall/sysnums-i386.h
+index 2dfee95..f30f969 100644
+--- a/src/syscall/sysnums-i386.h
++++ b/src/syscall/sysnums-i386.h
+@@ -384,4 +384,5 @@ static const Sysnum sysnums_i386[] = {
+ 	[ 435 ] = PR_clone3,
+ 	[ 437 ] = PR_openat2,
+ 	[ 439 ] = PR_faccessat2,
++	[ 452 ] = PR_fchmodat2,
+ };
+diff --git a/src/syscall/sysnums-sh4.h b/src/syscall/sysnums-sh4.h
+index 5081c8a..4b2a927 100644
+--- a/src/syscall/sysnums-sh4.h
++++ b/src/syscall/sysnums-sh4.h
+@@ -342,4 +342,5 @@ static const Sysnum sysnums_sh4[] = {
+ 	[ 435 ] = PR_clone3,
+ 	[ 437 ] = PR_openat2,
+ 	[ 439 ] = PR_faccessat2,
++	[ 452 ] = PR_fchmodat2,
+ };
+diff --git a/src/syscall/sysnums-x32.h b/src/syscall/sysnums-x32.h
+index 524b7c0..68bd2d4 100644
+--- a/src/syscall/sysnums-x32.h
++++ b/src/syscall/sysnums-x32.h
+@@ -275,6 +275,7 @@ static const Sysnum sysnums_x32[] = {
+ 	[ 316 ] = PR_renameat2,
+ 	[ 435 ] = PR_clone3,
+ 	[ 437 ] = PR_openat2,
++	[ 452 ] = PR_fchmodat2,
+ 	[ 512 ] = PR_rt_sigaction,
+ 	[ 513 ] = PR_rt_sigreturn,
+ 	[ 514 ] = PR_ioctl,
+diff --git a/src/syscall/sysnums-x86_64.h b/src/syscall/sysnums-x86_64.h
+index b4601c1..5bec0e0 100644
+--- a/src/syscall/sysnums-x86_64.h
++++ b/src/syscall/sysnums-x86_64.h
+@@ -337,4 +337,5 @@ static const Sysnum sysnums_x86_64[] = {
+         [ 435 ] = PR_clone3,
+ 	[ 437 ] = PR_openat2,
+ 	[ 439 ] = PR_faccessat2,
++	[ 452 ] = PR_fchmodat2,
+ };
+--
+2.53.0

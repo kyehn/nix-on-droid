@@ -1,0 +1,141 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: nix-on-droid <nix-on-droid@local>
+Date: Mon, 29 Sep 2026 00:00:00 +0000
+Subject: [PATCH] compat: centralize libc/kernel-header fallbacks
+
+Follow the file's own convention (private fallbacks guarded by
+#ifndef): move the command-line -D shims into src/compat.h.  Where a
+system header is included *before* compat.h and already defines one of
+them (glibc's TEMP_FAILURE_RETRY, the kernel TC*2 numbers), the #ifndef
+guard picks it up instead of redefining it; where compat.h comes first
+(MSG_COPY in sysvipc_msg.c), musl's absence is the case we fix.
+
+- MSG_COPY, TCGETS/TCSETS/TCSETSW/TCSETSF and TCGETS2/TCSETS2/
+  TCSETSW2/TCSETSF2 with their asm-generic values.
+- TEMP_FAILURE_RETRY in its glibc statement-expression form
+  (needs <errno.h>, included above).
+- Android ashmem: prefer <linux/ashmem.h> via __has_include (NDK,
+  glibc+headers); otherwise define the __ASHMEMIOC protocol values
+  precomputed from uapi/linux/ashmem.h (freestanding-safe: no _IOW
+  needed, SET_SIZE split on __SIZEOF_SIZE_T__).  Both
+  <linux/ashmem.h> consumers (ashmem_memfd, sysvipc_shm) include
+  compat.h instead, which also drops the fake-ashmem/-I hack and the
+  whole preConfigure block.
+
+---
+ src/compat.h                              |   64 +++++++++++++++++++++++++++++
+ src/extension/ashmem_memfd/ashmem_memfd.c |    2 -
+ src/extension/sysvipc/sysvipc_shm.c       |    3 +
+ 3 files changed, 67 insertions(+), 2 deletions(-)
+
+diff --git a/src/compat.h b/src/compat.h
+index 53300b8..30aaff7 100644
+--- a/src/compat.h
++++ b/src/compat.h
+@@ -23,6 +23,8 @@
+ #ifndef COMPAT_H
+ #define COMPAT_H
+ 
++#include <errno.h> /* errno, EINTR, for TEMP_FAILURE_RETRY below. */
++
+ /* Local definitions for compatibility with old and/or broken distros... */
+ #    ifndef AT_NULL
+ #        define AT_NULL			0
+@@ -275,4 +277,66 @@ struct proot_open_how {
+ 	unsigned long long resolve;
+ };
+ 
++/* Message queue constants and helpers missing from some libcs (musl
++ * has no MSG_COPY, no struct termios2 TC*2 numbers, and no
++ * TEMP_FAILURE_RETRY), guarded so the system headers win wherever
++ * they provide them.  */
++#    ifndef MSG_COPY
++#        define MSG_COPY	040000
++#    endif
++#    ifndef TCGETS
++#        define TCGETS		0x5401
++#    endif
++#    ifndef TCSETS
++#        define TCSETS		0x5402
++#    endif
++#    ifndef TCSETSW
++#        define TCSETSW		0x5403
++#    endif
++#    ifndef TCSETSF
++#        define TCSETSF		0x5404
++#    endif
++#    ifndef TCGETS2
++#        define TCGETS2		0x802C542A
++#    endif
++#    ifndef TCSETS2
++#        define TCSETS2		0x402C542B
++#    endif
++#    ifndef TCSETSW2
++#        define TCSETSW2		0x402C542C
++#    endif
++#    ifndef TCSETSF2
++#        define TCSETSF2		0x402C542D
++#    endif
++#    ifndef TEMP_FAILURE_RETRY
++#        define TEMP_FAILURE_RETRY(exp) (__extension__ ({ __typeof__(exp) _rc; do { _rc = (exp); } while (_rc == -1 && errno == EINTR); _rc; }))
++#    endif
++
++/* Android ashmem interface for <linux/ashmem.h>-less libcs (musl
++ * ships no Linux-specific headers).  Values match uapi/linux/ashmem.h
++ * (__ASHMEMIOC 0x77); platforms that have the kernel header (NDK,
++ * glibc+headers) keep using it via __has_include.  The SET_SIZE
++ * encoding depends on sizeof(size_t), hence the split.  */
++#    if __has_include(<linux/ashmem.h>)
++#        include <linux/ashmem.h>
++#    else
++#        ifndef __ASHMEMIOC
++#            define __ASHMEMIOC		0x77
++#        endif
++#        ifndef ASHMEM_NAME_LEN
++#            define ASHMEM_NAME_LEN		256
++#        endif
++#        ifndef ASHMEM_SET_NAME
++#            define ASHMEM_SET_NAME		0x41007701
++#        endif
++#        if __SIZEOF_SIZE_T__ == 8
++#            define ASHMEM_SET_SIZE		0x40087703
++#        else
++#            define ASHMEM_SET_SIZE		0x40047703
++#        endif
++#        ifndef ASHMEM_GET_SIZE
++#            define ASHMEM_GET_SIZE		0x7704
++#        endif
++#    endif
++
+ #endif /* COMPAT_H */
+diff --git a/src/extension/ashmem_memfd/ashmem_memfd.c b/src/extension/ashmem_memfd/ashmem_memfd.c
+index b215af8..5249d1e 100644
+--- a/src/extension/ashmem_memfd/ashmem_memfd.c
++++ b/src/extension/ashmem_memfd/ashmem_memfd.c
+@@ -4,7 +4,7 @@
+ #include <signal.h>
+ #include <unistd.h>
+ #include <sys/syscall.h>  /* __NR_memfd_create,  */
+-#include <linux/ashmem.h> /* ASHMEM_GET_SIZE,  */
++#include "compat.h"       /* <linux/ashmem.h>, or a fallback.  */
+ #include <linux/memfd.h>  /* MFD_CLOEXEC  */
+ 
+ #include <talloc.h>
+diff --git a/src/extension/sysvipc/sysvipc_shm.c b/src/extension/sysvipc/sysvipc_shm.c
+index b14eb65..aae3350 100644
+--- a/src/extension/sysvipc/sysvipc_shm.c
++++ b/src/extension/sysvipc/sysvipc_shm.c
+@@ -20,9 +20,10 @@
+ #include <string.h> /* memset */
+ #include <time.h> /* time */
+ #include <fcntl.h> /* open, fcntl */
++#include <sys/ioctl.h> /* ioctl */
+ 
+ #ifdef __ANDROID__
+-#include <linux/ashmem.h> /* ASHMEM_* */
++#include "compat.h" /* <linux/ashmem.h>, or a fallback.  */
+ #else
+ #include <unistd.h> /* ftruncate */
+ #endif
+--
+2.53.0

@@ -1,0 +1,44 @@
+diff --git a/src/ptrace/wait.c b/src/ptrace/wait.c
+index af447d1..74357f3 100644
+--- a/src/ptrace/wait.c
++++ b/src/ptrace/wait.c
+@@ -96,10 +96,11 @@ int translate_wait_enter(Tracee *ptracer)
+ 		return 0;
+ 
+ 	/* Don't emulate the ptrace mechanism if the requested pid is
+-	 * not a ptracee.  */
++	 * not a ptracee.  Zombies are looked up too, otherwise waiting
++	 * on an already-reaped-in-proot child would block forever.  */
+ 	pid = (pid_t) peek_reg(ptracer, ORIGINAL, SYSARG_1);
+ 	if (pid != -1) {
+-		ptracee = get_tracee(ptracer, pid, false);
++		ptracee = get_ptracee(ptracer, pid, false, true, peek_reg(ptracer, ORIGINAL, SYSARG_3));
+ 		if (ptracee == NULL || PTRACEE.ptracer != ptracer)
+ 			return 0;
+ 	}
+diff --git a/src/tracee/tracee.c b/src/tracee/tracee.c
+index dcc9bbe..29baeb2 100644
+--- a/src/tracee/tracee.c
++++ b/src/tracee/tracee.c
+@@ -242,7 +242,7 @@ static Tracee *new_tracee(pid_t pid)
+  * wait(2) manual for the meaning of @wait_options.  This function
+  * returns NULL if there's no such ptracee.
+  */
+-static Tracee *get_ptracee(const Tracee *ptracer, pid_t pid, bool only_stopped,
++Tracee *get_ptracee(const Tracee *ptracer, pid_t pid, bool only_stopped,
+ 			bool only_with_pevent, word_t wait_options)
+ {
+ 	Tracee *ptracee;
+diff --git a/src/tracee/tracee.h b/src/tracee/tracee.h
+index eaf8625..25e76ed 100644
+--- a/src/tracee/tracee.h
++++ b/src/tracee/tracee.h
+@@ -405,6 +405,8 @@ typedef struct tracee {
+ #define TRACEE(a) talloc_get_type_abort(talloc_parent(talloc_parent(a)), Tracee)
+ 
+ extern Tracee *get_tracee(const Tracee *tracee, pid_t pid, bool create);
++extern Tracee *get_ptracee(const Tracee *ptracer, pid_t pid, bool only_stopped,
++				bool only_with_pevent, word_t wait_options);
+ extern Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid,
+ 				bool only_with_pevent, word_t wait_options);
+ extern bool has_ptracees(const Tracee *ptracer, pid_t pid, word_t wait_options);

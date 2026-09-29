@@ -1,0 +1,52 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: nix-on-droid <nix-on-droid@local>
+Date: Mon, 29 Sep 2026 00:00:00 +0000
+Subject: [PATCH] execve: reject 32-bit guests with a diagnostic
+
+Companion to strip-32bit-support.patch, which removes the -m32
+loader on every architecture.  Without this a 32-bit ELF is still
+accepted by open_elf() and then handed the 64-bit loader, so the
+guest dies with a bare SIGSEGV and no hint about why.  A few lines
+here turn that into an explanation.
+
+The test keys off the ELF class rather than the architecture, so it
+covers x86_64 as well: strip-32bit-support.patch removes the loader
+there too, and a 32-bit guest would fail just as silently.
+
+It sits after the execve status check on purpose.  The 64-bit loader
+can fail for reasons unrelated to the guest's class (ENOMEM,
+ETXTBSY, ...), and the guest deserves to see that error rather than a
+misdiagnosis about 32-bit support.
+
+---
+ src/execve/exit.c |   15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/src/execve/exit.c b/src/execve/exit.c
+index 348a1fd..8b710f3 100644
+--- a/src/execve/exit.c
++++ b/src/execve/exit.c
+@@ -482,6 +482,21 @@ void translate_execve_exit(Tracee *tracee)
+ 	if ((int) syscall_result < 0)
+ 		return;
+ 
++#if !defined(HAS_LOADER_32BIT)
++	if (IS_CLASS32(tracee->load_info->elf_header)) {
++		/* This build was stripped of 32-bit support (see
++		 * strip-32bit-support.patch), so a 32-bit guest would run
++		 * the 64-bit loader and die with an unexplained SIGSEGV.
++		 * Fail it loudly instead.  Tested after the execve status
++		 * so that a loader which failed for an unrelated reason
++		 * (ENOMEM, ETXTBSY, ...) still reports that reason.  */
++		note(tracee, ERROR, USER, "32-bit ELF executables are not "
++			"supported by this proot build (64-bit only)");
++		terminate_tracee(tracee);
++		return;
++	}
++#endif
++
+ 	/* The guest program is now running; PR_SET_NO_NEW_PRIVS calls from
+ 	 * here on belong to the guest, not to PRoot's own pre-execve setup. */
+ 	tracee->seen_execve = true;
+--
+2.53.0

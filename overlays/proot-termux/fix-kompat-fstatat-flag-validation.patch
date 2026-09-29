@@ -1,0 +1,40 @@
+diff --git a/src/extension/kompat/kompat.c b/src/extension/kompat/kompat.c
+index 5c39942..b28922b 100644
+--- a/src/extension/kompat/kompat.c
++++ b/src/extension/kompat/kompat.c
+@@ -314,13 +314,6 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
+ 		};
+ 
+ 		flags = peek_reg(tracee, CURRENT, SYSARG_4);
+-		if ((flags & ~(
+-						AT_SYMLINK_NOFOLLOW|
+-						AT_NO_AUTOMOUNT|
+-						AT_EMPTY_PATH|
+-						0x6000 /* AT_STATX_SYNC_TYPE aka. KSTAT_QUERY_FLAGS */
+-					)) != 0)
+-			return -EINVAL; /* Exposed by LTP.  */
+ 
+ #if defined(ARCH_X86_64)
+ 		if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
+@@ -334,7 +327,20 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
+ 			modif.new_sysarg_num = PR_stat64;
+ #endif
+ 
+-		modify_syscall(tracee, config, &modif);
++		if (modify_syscall(tracee, config, &modif)) {
++			/* Only validate the flags when this syscall is
++			 * actually being patched into a pre-2.6.16
++			 * stat(2)/lstat(2); on a modern kernel they were
++			 * passed straight through.  Flags added since
++			 * 2.6.38 must not be rejected.  */
++			if ((flags & ~(
++							AT_SYMLINK_NOFOLLOW|
++							AT_NO_AUTOMOUNT|
++							AT_EMPTY_PATH|
++							0x6000 /* AT_STATX_SYNC_TYPE aka. KSTAT_QUERY_FLAGS */
++						)) != 0)
++				return -EINVAL; /* Exposed by LTP.  */
++		}
+ 		return 0;
+ 	}
+ 

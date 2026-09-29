@@ -1,0 +1,51 @@
+Backport proot-me/proot d8bf141 (first half): restart the original
+syscall by resetting registers and the trap straight away instead of
+queuing it through the chained-syscall machinery.  A signal arriving
+before the chained call runs used to confuse the chain bookkeeping
+(proot-me issue 292).  Uses get_systrap_size(), the termux fork
+equivalent of SYSTRAP_SIZE, for the ARM SIGSYS-skip path.
+
+diff --git a/src/syscall/chain.c b/src/syscall/chain.c
+index 9b7569c..1b07f13 100644
+--- a/src/syscall/chain.c
++++ b/src/syscall/chain.c
+@@ -164,19 +164,29 @@ void force_chain_final_result(Tracee *tracee, word_t forced_result)
+ 
+ /**
+  * Restart the original syscall of the given @tracee.  The result of
+- * the current syscall will be overwritten.  This function returns the
+- * same status as register_chained_syscall().
++ * the current syscall will be overwritten.
++ *
++ * The registers and trap are reset straight away instead of going
++ * through the chained-syscall machinery, so a signal arriving first
++ * cannot confuse the chain bookkeeping.  Always returns 0.
+  */
+ int restart_original_syscall(Tracee *tracee)
+ {
+-	return register_chained_syscall(tracee,
+-					get_sysnum(tracee, ORIGINAL),
+-					peek_reg(tracee, ORIGINAL, SYSARG_1),
+-					peek_reg(tracee, ORIGINAL, SYSARG_2),
+-					peek_reg(tracee, ORIGINAL, SYSARG_3),
+-					peek_reg(tracee, ORIGINAL, SYSARG_4),
+-					peek_reg(tracee, ORIGINAL, SYSARG_5),
+-					peek_reg(tracee, ORIGINAL, SYSARG_6));
++	word_t instr_pointer;
++
++	poke_reg(tracee, SYSARG_1, peek_reg(tracee, ORIGINAL, SYSARG_1));
++	poke_reg(tracee, SYSARG_2, peek_reg(tracee, ORIGINAL, SYSARG_2));
++	poke_reg(tracee, SYSARG_3, peek_reg(tracee, ORIGINAL, SYSARG_3));
++	poke_reg(tracee, SYSARG_4, peek_reg(tracee, ORIGINAL, SYSARG_4));
++	poke_reg(tracee, SYSARG_5, peek_reg(tracee, ORIGINAL, SYSARG_5));
++	poke_reg(tracee, SYSARG_6, peek_reg(tracee, ORIGINAL, SYSARG_6));
++	poke_reg(tracee, SYSTRAP_NUM, peek_reg(tracee, ORIGINAL, SYSARG_NUM));
++
++	/* Move the instruction pointer back to the original trap.  */
++	instr_pointer = peek_reg(tracee, CURRENT, INSTR_POINTER);
++	poke_reg(tracee, INSTR_POINTER, instr_pointer - get_systrap_size(tracee));
++
++	return 0;
+ }
+ 
+ int restart_current_syscall_as_chained(Tracee *tracee)

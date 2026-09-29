@@ -1,0 +1,72 @@
+Backport the complete stack-alignment fix from proot-me/proot commit
+806bb62f2718ec591bccf0650babcb828367217e. The Termux fork already
+contains the execve/load-script part of the fix, but not the changes that
+align stacks allocated by alloc_mem() or moved by the kompat extension.
+Those omissions can leave an AArch64 process with a misaligned stack and
+cause an intermittent SIGSEGV.
+
+--- a/src/arch.h
++++ b/src/arch.h
+@@ -33,6 +33,7 @@
+ 
+ #define SYSCALL_AVOIDER ((word_t) -2)
+ #define SYSTRAP_NUM SYSARG_NUM
++#define STACK_ALIGNMENT 16
+ 
+ #if !defined(ARCH_X86_64) && !defined(ARCH_ARM_EABI) && !defined(ARCH_X86) && !defined(ARCH_SH4)
+ #    if defined(__x86_64__)
+--- a/src/extension/kompat/kompat.c
++++ b/src/extension/kompat/kompat.c
+@@ -592,6 +592,7 @@
+ 	word_t stack_pointer;
+ 	void *argv_envp;
+ 	size_t size;
++	size_t reserve_size;
+ 	int status;
+ 
+ 	vectors_address = get_elf_aux_vectors_address(tracee);
+@@ -658,8 +659,10 @@
+ 
+ 	/* Allocate enough room in tracee's stack for the new ELF
+ 	 * auxiliary vector.  */
+-	stack_pointer   -= 2 * sizeof_word(tracee);
+-	vectors_address -= 2 * sizeof_word(tracee);
++	reserve_size = 2 * sizeof_word(tracee);
++	reserve_size = ((reserve_size - 1) / STACK_ALIGNMENT + 1) * STACK_ALIGNMENT;
++	stack_pointer   -= reserve_size;
++	vectors_address -= reserve_size;
+ 
+ 	/* Note that it is safe to update the stack pointer manually
+ 	 * since we are in execve sysexit.  However it should be done
+--- a/src/tracee/mem.c
++++ b/src/tracee/mem.c
+@@ -655,6 +655,9 @@
+ 	if (stack_pointer == peek_reg(tracee, ORIGINAL, STACK_POINTER))
+ 		size += RED_ZONE_SIZE;
+ 
++	/* Align the stack */
++	size = ((size - 1) / STACK_ALIGNMENT + 1) * STACK_ALIGNMENT;
++
+ 	/* Sanity check. */
+ 	if (   (size > 0 && stack_pointer <= (word_t) size)
+ 	    || (size < 0 && stack_pointer >= ULONG_MAX + size)) {
+--- a/src/execve/exit.c
++++ b/src/execve/exit.c
+@@ -231,15 +231,9 @@
+ 			: strlen(tracee->load_info->raw_path) + 1);
+ 
+ 	/* A padding will be appended at the end of the load script
+-	 * (a.k.a "strings area") to ensure this latter is aligned to
+-	 * a word boundary, for the sake of performance
+-	 * (or 16 bytes, since AArch64 needs SP 16-bytes-aligned). */
++	 * (a.k.a "strings area") to ensure this latter is aligned properly. */
+ 	padding_size = (stack_pointer - string1_size - string2_size - string3_size)
+-#ifdef ARCH_ARM64
+-		        % 16;
+-#else
+-			% sizeof_word(tracee);
+-#endif
++			% STACK_ALIGNMENT;
+ 
+ 	strings_size = string1_size + string2_size + string3_size + padding_size;
+ 	string1_address = stack_pointer - strings_size;
