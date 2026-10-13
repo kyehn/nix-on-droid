@@ -245,7 +245,7 @@ index 9bd8dad..7a09eed 100644
  #include <stdint.h>      /* intptr_t, */
  #include <errno.h>       /* E*, */
  #include <stdio.h>       /* FILE, fopen(3), fgets(3), sscanf(3), fclose(3), */
-@@ -391,7 +392,7 @@ static FilteredSysnum filtered_sysnums[] = {
+@@ -416,7 +417,7 @@
   */
  static int restore_mode(ModifiedNode *node)
  {
@@ -254,7 +254,16 @@ index 9bd8dad..7a09eed 100644
  	return 0;
  }
  
-@@ -480,7 +481,7 @@ static void override_permissions(const Tracee *tracee, const char *path, bool is
+@@ -483,7 +484,7 @@
+ 			 * over to the target of the symlink, which is the file
+ 			 * stat(2) above looked at; restore its previous mode.  */
+ 			if ((peek_reg(tracee, ORIGINAL, SYSARG_4) & AT_SYMLINK_NOFOLLOW) != 0
+-			    && lstat(path, &link) == 0 && S_ISLNK(link.st_mode))
++			    && ac_lstat(path, &link) == 0 && S_ISLNK(link.st_mode))
+ 				node->mode = perms.st_mode;
+ 			else
+ 				node->mode = peek_reg(tracee, ORIGINAL, SYSARG_3);
+@@ -521,7 +522,7 @@
  	 * called in reverse order.  */
  	talloc_set_destructor(node, restore_mode);
  
@@ -263,7 +272,7 @@ index 9bd8dad..7a09eed 100644
  
  	return;
  }
-@@ -1110,7 +1111,7 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
+@@ -1173,7 +1174,7 @@
  
  		/* If the metafile exists and the original file does not, delete it. */
  		if(path_exists(meta_path) == 0) 
@@ -272,7 +281,7 @@ index 9bd8dad..7a09eed 100644
  
  		return 0;
  	}	
-@@ -1307,7 +1308,7 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
+@@ -1370,7 +1371,7 @@
  		if(status < 0)
  			return status;
  
@@ -281,7 +290,7 @@ index 9bd8dad..7a09eed 100644
  		if(status < 0)
  			return status;
  
-@@ -1326,7 +1327,7 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
+@@ -1389,7 +1390,7 @@
  		if(path_exists(meta_path) != 0)
  			return 0;
  
@@ -290,6 +299,7 @@ index 9bd8dad..7a09eed 100644
  		if(status < 0) 
  			return status;
  
+
 diff --git a/src/extension/fake_id0/helper_functions.c b/src/extension/fake_id0/helper_functions.c
 index 3a16ce5..38acf3e 100644
 --- a/src/extension/fake_id0/helper_functions.c
@@ -815,6 +825,28 @@ index 8c9f361..fc2e435 100644
  			release_shadow(i);
  			continue;
  		}
+diff --git a/src/syscall/socket.c b/src/syscall/socket.c
+index 4a29b83..0e0e79b 100644
+--- a/src/syscall/socket.c
++++ b/src/syscall/socket.c
+@@ -20,6 +20,7 @@
+  * 02110-1301 USA.
+  */
+ 
++#include "android_compat.h"
+ #include <stddef.h>      /* offsetof(3), */
+ #include <strings.h>     /* bzero(3), */
+ #include <string.h>      /* strncpy(3), strlen(3), */
+@@ -227,7 +228,7 @@
+ 	 * exists there unless the translated path is too long for it.  */
+ 	if (status == 0 && (user_path[0] == '/' || strlen(host_path) > sizeof_path)) {
+ 		saved_errno = errno;
+-		if (lstat(host_path, &statl) < 0 && (errno == ENOENT || errno == ENOTDIR))
++		if (ac_lstat(host_path, &statl) < 0 && (errno == ENOENT || errno == ENOTDIR))
+ 			status = -errno;
+ 		errno = saved_errno;
+ 	}
+
 diff --git a/src/tracee/event.c b/src/tracee/event.c
 index df953ee..81df1d9 100644
 --- a/src/tracee/event.c

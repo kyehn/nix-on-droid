@@ -30,6 +30,12 @@ jobs:
           nix flake update
           nix run nixpkgs#nix-update -- --build --version=branch proot-termux --flake
           nix build --impure --print-out-paths .#proot-termux
+          pushd overlays/switch-to-configuration && go get -u all && go mod tidy && popd
+          nix run nixpkgs#nix-update -- --build --version=skip switch-to-configuration --flake
+          pushd overlays/session-login && go get -u all && go mod tidy && popd
+          nix run nixpkgs#nix-update -- --build --version=skip session-login --flake
+          pushd overlays/session-login-inner && go get -u all && go mod tidy && popd
+          nix run nixpkgs#nix-update -- --build --version=skip session-login-inner --flake
       - if: ${{ runner.arch == 'ARM64' }}
         run: |
           nix fmt

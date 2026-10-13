@@ -61,7 +61,12 @@
           legacyPackages = pkgs;
 
           packages = {
-            inherit (pkgs) proot-termux;
+            inherit (pkgs)
+              proot-termux
+              switch-to-configuration
+              session-login
+              session-login-inner
+              ;
           };
 
           formatter = pkgs.nixfmt-tree.override {

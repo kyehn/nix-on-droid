@@ -7,13 +7,13 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "proot-termux";
-  version = "5.1.107.96-unstable-2026-10-01";
+  version = "5.1.107.96-unstable-2026-10-12";
 
   src = fetchFromGitHub {
     repo = "proot";
     owner = "termux";
-    rev = "a179d3e8a4e045aaa1fb8cc3284f23509d96d353";
-    hash = "sha256-X9VvBaFSUq545adQ6/f8Wp/TM7XTXNJp/QGwprabsVw=";
+    rev = "b8c1f5c5c6730dc9d521d5bd5ce1cfeedecde087";
+    hash = "sha256-+WVTD7ak7wpOSw2p8fbwfBj67NKcxIK5j5TVNb6E5vs=";
   };
 
   patches = [
@@ -26,10 +26,11 @@ stdenv.mkDerivation (finalAttrs: {
     # Let the environment own -O: the makefile's hardcoded -O2 used to
     # silently downgrade the CFLAGS optimization level.
     ./build-let-env-own-opt-level.patch
-    ./syscall-support-fchmodat2.patch
-    # Per-arch fchmodat2 numbers (452); the main patch covers enter.c,
-    # seccomp.c and sysnums.list.
-    ./syscall-support-fchmodat2-sysnums.patch
+    # fchmodat2(2) needs no backport: termux/proot 7fca80c (2026-10-12)
+    # merged it, reading the flags from SYSARG_4 as fchownat does and
+    # restoring a symlink's target mode in fake_id0's DAC override.  The
+    # local syscall-support-fchmodat2{,-sysnums}.patch pair is therefore
+    # gone; this note keeps it from being re-added from an older tree.
     # Android untrusted_app seccomp compatibility: proot's own blocked
     # libc calls (fork, access, mkdir, unlink, ...).
     ./android-seccomp-self-compat.patch
@@ -52,9 +53,6 @@ stdenv.mkDerivation (finalAttrs: {
     # rewrite of the seccomp/tracee layer, so these are applied as focused
     # patches instead of switching forks.
 
-    # getresuid(2)/getresgid(2) write 32-bit uid_t/gid_t; poking only 16 bits
-    # left the upper half of each caller's uid_t uninitialised on LP64.
-    ./fix-fake-id0-32bit-res-ids.patch
     # The extracted loader must stay executable by tracees running as any uid,
     # otherwise the fake-id0 extension cannot drop privileges.
     ./fix-loader-executable-by-any-uid.patch

@@ -21,7 +21,7 @@ buildGoModule (finalAttrs: {
     ];
   };
 
-  vendorHash = "sha256-/Ox7fGsUo1dORSqxuuFTbKb89Y/ZjTlEwpBLqcAVfDk=";
+  vendorHash = "sha256-0Z2gUJdWeVNEDFglaKo3zorNSbfUNWG8iHkDzB313Dw=";
 
   subPackages = [ "cmd/switch-to-configuration" ];
 

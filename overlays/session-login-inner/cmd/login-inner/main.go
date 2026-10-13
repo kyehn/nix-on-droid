@@ -19,12 +19,10 @@ import (
 )
 
 var (
-	//go:embed config.toml
-	configString string
-	logger       *zap.Logger
-	sugar        *zap.SugaredLogger
-	cfg          Config
-	logLevel     = zap.NewAtomicLevelAt(zap.InfoLevel)
+	logger   *zap.Logger
+	sugar    *zap.SugaredLogger
+	cfg      Config
+	logLevel = zap.NewAtomicLevelAt(zap.InfoLevel)
 )
 
 func init() {
@@ -114,13 +112,12 @@ func main() {
 			if cmd.Bool("verbose") {
 				logLevel.SetLevel(zap.DebugLevel)
 			}
-			if err := config.LoadStrings(config.Toml, configString); err != nil {
-				return ctx, err
+			configFile := cmd.String("config")
+			if configFile == "" {
+				configFile = "@config_file@"
 			}
-			if configFile := cmd.String("config"); configFile != "" {
-				if err := config.LoadFilesByFormat(config.Toml, configFile); err != nil {
-					return ctx, err
-				}
+			if err := config.LoadFilesByFormat(config.Toml, configFile); err != nil {
+				return ctx, err
 			}
 			if err := config.BindStruct("", &cfg); err != nil {
 				return ctx, err

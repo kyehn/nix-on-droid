@@ -58,19 +58,14 @@ def run(d):
 
     d.ui(text="OK").click()
     screenshot(d, "ok-clicked")
+    
+    wait_for(d, "The new configuration is", timeout=600)
+    screenshot(d, "new-configuration-complete")
 
-    wait_for(d, "Welcome to Nix-on-Droid!")
-    screenshot(d, "welcome-screen")
+    wait_for(d, "bash-")
+    screenshot(d, "new-configuration-bash")
 
-    wait_for(d, "Initializing Nix-on-Droid")
-    screenshot(d, "init-screen")
-
-    wait_for(d, "Initialization complete", timeout=600)
-    wait_for(d, "sh-")
-
-    screenshot(d, "bootstrap-complete")
-
-    run_cmd(d, "nix --version", wait=3)
+    run_cmd(d, "nix --version")
     run_cmd(d, 'nix eval --expr "1 + 1"', wait=3)
     run_cmd(d, "nix shell nixpkgs#fastfetch --command fastfetch --version", wait=60)
 
