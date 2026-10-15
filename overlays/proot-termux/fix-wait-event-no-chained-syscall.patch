@@ -1,0 +1,37 @@
+Backport proot-me/proot d8bf141 (missing third hunk): drop the
+chained-syscall bookkeeping from handle_ptracee_event().
+
+fix-restart-syscall-no-chain.patch rewrote restart_original_syscall()
+to reset the registers and the trap in place.  It no longer calls
+register_chained_syscall(), so it no longer creates the chain.syscalls
+entry that the old implementation guaranteed to exist.
+
+handle_ptracee_event() still relied on that side effect: when
+update_wait_status() returns 0 -- which it does from the
+WIFEXITED/WIFSIGNALED branch that calls restart_original_syscall() --
+it called chain_next_syscall(ptracer) unconditionally.  That call
+asserts chain.syscalls != NULL and then forges yet another syscall on
+top of the registers and instruction pointer that
+restart_original_syscall() has just reset, so the ptracer resumes at a
+stale address.  Upstream removed the call in the same commit precisely
+because the rewrite makes it both redundant and wrong.
+
+Reached by any ptracer whose child exits while it is inside
+wait4()/waitpid(), for instance login-inner waiting for
+nixos-rebuild to finish a switch.
+
+diff --git a/src/ptrace/wait.c b/src/ptrace/wait.c
+index 80172d7..973a7d8 100644
+--- a/src/ptrace/wait.c
++++ b/src/ptrace/wait.c
+@@ -382,9 +382,7 @@
+ 		int status;
+ 
+ 		status = update_wait_status(ptracer, ptracee);
+-		if (status == 0)
+-			chain_next_syscall(ptracer);
+-		else
++		if (status != 0)
+ 			poke_reg(ptracer, SYSARG_RESULT, (word_t) status);
+ 
+ 		/* Write ptracer's register cache back.  */

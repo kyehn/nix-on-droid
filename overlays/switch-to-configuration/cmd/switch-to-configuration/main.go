@@ -16,12 +16,10 @@ import (
 	"go.uber.org/zap"
 )
 
-//go:embed config.toml
-var configString string
-
 var (
 	logger   *zap.Logger
 	sugar    *zap.SugaredLogger
+	toplevel string
 	cfg      Config
 	logLevel = zap.NewAtomicLevelAt(zap.InfoLevel)
 )
@@ -55,7 +53,27 @@ func main() {
 		_ = logger.Sync()
 	}()
 	config.AddDriver(toml.Driver)
-	err := config.LoadStrings(config.Toml, configString)
+	toplevel = filepath.FromSlash(os.Getenv("TOPLEVEL"))
+	if toplevel == "" {
+		exePath, err := os.Executable()
+		if err != nil {
+			sugar.Fatal(err)
+		}
+		exePath, err = filepath.Abs(exePath)
+		if err != nil {
+			sugar.Fatal(err)
+		}
+		base := filepath.Base(exePath)
+		if base != "switch-to-configuration" {
+			sugar.Fatal("failed to find switch-to-configuration")
+		}
+		binDir := filepath.Dir(exePath)
+		if filepath.Base(binDir) != "bin" {
+			sugar.Fatal("switch-to-configuration is not inside bin/")
+		}
+		toplevel = filepath.Dir(binDir)
+	}
+	err := config.LoadFilesByFormat(config.Toml, filepath.Join(toplevel, "switch-to-configuration.toml"))
 	if err != nil {
 		sugar.Fatal(err)
 	}
@@ -109,26 +127,6 @@ func doSystemSwitch(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 	sugar.Info("Performing system switch")
-	toplevel := filepath.FromSlash(os.Getenv("TOPLEVEL"))
-	if toplevel == "" {
-		exePath, err := os.Executable()
-		if err != nil {
-			return eris.New("failed to get executable path")
-		}
-		exePath, err = filepath.Abs(exePath)
-		if err != nil {
-			return eris.New("failed to get absolute path")
-		}
-		base := filepath.Base(exePath)
-		if base != "switch-to-configuration" {
-			return eris.New("failed to find switch-to-configuration")
-		}
-		binDir := filepath.Dir(exePath)
-		if filepath.Base(binDir) != "bin" {
-			return eris.New("switch-to-configuration is not inside bin/")
-		}
-		toplevel = filepath.Dir(binDir)
-	}
 	path := filepath.Join(cfg.InstallationDir, "run", "current-system")
 	_, err := os.Stat(path)
 	if err == nil {

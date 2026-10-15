@@ -15,7 +15,7 @@
     };
     installationDir = lib.mkOption {
       type = lib.types.path;
-      default = "/data/data/com.termux/files/usr";
+      default = "/data/data/com.termux.nix/files/usr";
       description = "Base directory for Nix-on-Droid installation.";
     };
     proot = {
@@ -77,21 +77,16 @@
             mode = "0755";
           };
         };
-        etc = {
-          "${pkgs.session-login.meta.mainProgram}.toml".source =
+        etc."${pkgs.session-login.meta.mainProgram}.toml" = {
+          source =
             let
               proot_binary_path =
                 config.system.build.installationDir + "/bin/" + pkgs.proot-termux.meta.mainProgram;
-              login_inner_binary_path =
-                config.system.build.installationDir + "/bin/" + pkgs.session-login-inner.meta.mainProgram;
             in
             (pkgs.formats.toml { }).generate "config.toml" {
-              inherit login_inner_binary_path;
+              login_inner_binary_path = lib.getExe session-login-inner;
               installation_dir = config.system.build.installationDir;
-              pending_artifacts = [
-                proot_binary_path
-                login_inner_binary_path
-              ];
+              pending_artifacts = [ proot_binary_path ];
               user = {
                 name = config.users.users.nix-on-droid.name;
                 home = config.users.users.nix-on-droid.home;
@@ -102,90 +97,7 @@
                 binary_path = proot_binary_path;
               };
             };
-          "${pkgs.session-login-inner.meta.mainProgram}.toml".source =
-            (pkgs.formats.toml { }).generate "config.toml"
-              {
-                installation_dir = config.system.build.installationDir;
-                user = {
-                  inherit (config.users.users.nix-on-droid) name home shell;
-                };
-                environment = lib.mapAttrsToList (name: value: {
-                  inherit name value;
-                }) config.system.build.environmentVariables;
-                process_compose = {
-                  enable =
-                    let
-                      processes = config.programs.process-compose.config.processes;
-                    in
-                    (processes != null && processes != { });
-                  binary_path = lib.getExe pkgs.process-compose;
-                  config_path = config.programs.process-compose.configFile;
-                  extra_args = [
-                    "--disable-dotenv"
-                    "--no-server"
-                    "--read-only"
-                    "-t=false"
-                  ];
-                };
-                first_run = {
-                  enable = config.system.build.bootstrapBuild;
-                  environment = [
-                    {
-                      name = "GC_NPROCS";
-                      value = "1";
-                    }
-                    {
-                      name = "NIXOS_REBUILD_I_UNDERSTAND_THE_CONSEQUENCES_PLEASE_BREAK_MY_SYSTEM";
-                      value = "1";
-                    }
-                  ];
-                  commands = [
-                    {
-                      argv0 = lib.getExe' pkgs.nix "nix-env";
-                      argv = [
-                        "--switch-profile"
-                        "/nix/var/nix/profiles/system"
-                      ];
-                    }
-                    {
-                      argv0 = lib.getExe pkgs.nix;
-                      argv = [
-                        "--extra-experimental-features"
-                        "nix-command"
-                        "--extra-experimental-features"
-                        "flakes"
-                        "flake"
-                        "new"
-                        "${config.users.users.nix-on-droid.home}/.config/nix-on-droid/template"
-                        "--template"
-                        "${config.system.build.flake.nix-on-droid}"
-                      ];
-                    }
-                    {
-                      argv0 = lib.getExe pkgs.nix;
-                      argv = [
-                        "--extra-experimental-features"
-                        "nix-command"
-                        "--extra-experimental-features"
-                        "flakes"
-                        "run"
-                        "nixpkgs#nixos-rebuild-ng"
-                        "--"
-                        "switch"
-                        "--flake"
-                        "${config.users.users.nix-on-droid.home}/.config/nix-on-droid/template#default"
-                        "--impure"
-                        "--accept-flake-config"
-                        "--verbose"
-                        "--print-build-logs"
-                        "--show-trace"
-                        "--use-substitutes"
-                      ];
-                    }
-                  ];
-                  fallback_shell = config.system.build.installationDir + "/bin/sh";
-                };
-              };
+          mode = "0644";
         };
       }
       // (lib.optionalAttrs config.system.build.bootstrapBuild {

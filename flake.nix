@@ -79,6 +79,7 @@
               gofumpt
               gotools
               revive
+              ruff
             ];
             settings.formatter = {
               yamlfmt = {
@@ -137,6 +138,19 @@
                 ];
                 includes = [ "*.go" ];
                 excludes = [ "vendor/*" ];
+              };
+              ruff-format = {
+                command = "ruff";
+                options = [ "format" ];
+                includes = [ "*.py" ];
+              };
+              ruff-check = {
+                command = "ruff";
+                options = [
+                  "check"
+                  "--fix"
+                ];
+                includes = [ "*.py" ];
               };
             };
           };

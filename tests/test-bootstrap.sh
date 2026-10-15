@@ -3,7 +3,7 @@ set -euo pipefail
 
 : "${DROID_UID:=10377}"
 : "${DROID_GID:=10377}"
-: "${PACKAGE_NAME:=com.termux}"
+: "${PACKAGE_NAME:=com.termux.nix}"
 : "${APP_FILES:=/data/data/${PACKAGE_NAME}/files}"
 : "${INSTALLATION_DIR:=${APP_FILES}/usr}"
 
@@ -145,5 +145,6 @@ exec "${BWRAP_CMD[@]}" \
         
         chmod 0555 /
 
+        exec ${INSTALLATION_DIR}/bin/login
         exec ${INSTALLATION_DIR}/bin/login
     "

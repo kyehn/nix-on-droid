@@ -23,7 +23,7 @@ in
   session-login-inner = prev.callPackage ./session-login-inner {
     inherit (modules) config;
   };
-  switch-to-configuration = prev.callPackage ./switch-to-configuration { inherit (modules) config; };
+  switch-to-configuration = prev.callPackage ./switch-to-configuration { };
   proot-termux = prev.pkgsStatic.pkgsLLVM.callPackage ./proot-termux {
     talloc = prev.pkgsStatic.pkgsLLVM.callPackage ./talloc.nix { };
     stdenv = prev.pkgsStatic.pkgsLLVM.stdenvAdapters.makeStaticBinaries prev.pkgsStatic.pkgsLLVM.stdenv;

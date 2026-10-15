@@ -39,13 +39,27 @@ jobs:
           sed -i '/users\.users\.nix-on-droid\.shell = lib.getExe pkgs\.bash;/a users.groups.nix-on-droid.gid = lib.mkForce 10377;' template/nix-on-droid.nix
           nix build --verbose --print-build-logs --impure --print-out-paths ./template#nixosConfigurations.default.config.system.build.toplevel --override-input nix-on-droid path:.
           nix build --verbose --print-build-logs --impure --print-out-paths .#bootstrap-zip
-      - run: true # bash tests/test-bootstrap.sh
+      - run: bash tests/test-bootstrap.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - if: ${{ runner.arch == 'X64' }}
+      - if: ${{ runner.arch == 'ARM64' && inputs.release_tag_name != '' }}
         run: |
-          find . -type f -exec sed -i 's#/data/data/com.termux/files#/data/data/com.termux.nix/files#g' {} +
+          git tag --force ${{ inputs.release_tag_name }}
+          git push origin ${{ inputs.release_tag_name }} --force
+      - uses: softprops/action-gh-release@master
+        if: ${{ inputs.release_tag_name != '' }}
+        with:
+          tag_name: ${{ inputs.release_tag_name }}
+          files: result/bootstrap-*.zip
+      - if: ${{ runner.arch == 'ARM64' }}
+        run: |
+          find . -type f -exec sed -i 's#/data/data/com.termux.nix/files#/data/data/com.termux/files#g' {} +
           nix build --verbose --print-build-logs --impure --print-out-paths .#bootstrap-zip
+      - if: ${{ runner.arch == 'ARM64' }}
+        uses: actions/upload-artifact@main
+        with:
+          path: result/bootstrap-*.zip
+          archive: false
       - if: ${{ runner.arch == 'X64' }}
         run: nix build github:t184256/droidctl --out-link /tmp/droidctl
       - if: ${{ runner.arch == 'X64' }}
@@ -66,12 +80,3 @@ jobs:
           name: screenshots
           path: screenshots
           if-no-files-found: warn
-      - if: ${{ runner.arch == 'ARM64' && inputs.release_tag_name != '' }}
-        run: |
-          git tag --force ${{ inputs.release_tag_name }}
-          git push origin ${{ inputs.release_tag_name }} --force
-      - uses: softprops/action-gh-release@master
-        if: ${{ inputs.release_tag_name != '' }}
-        with:
-          tag_name: ${{ inputs.release_tag_name }}
-          files: result/bootstrap-*.zip

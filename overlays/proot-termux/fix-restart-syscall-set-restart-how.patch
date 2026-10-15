@@ -1,0 +1,37 @@
+fix-restart-syscall-no-chain rewrote restart_original_syscall() to poke
+the registers and rewind the instruction pointer directly, and dropped
+two side effects that the chained-syscall path it replaced still had.
+
+Leaving restart_how unset makes the ptracer resume with whatever request
+happens to be left over (PTRACE_CONT when seccomp is enabled, or the
+last_restart_how that the PTRACE_EVENT_{EXIT,EXEC,FORK} cases reuse), so
+the rewound wait* never gets a syscall-exit stop back: the ptracer runs
+the syscall outside of PRoot's control and its bookkeeping falls behind,
+which ends with the tracee dying of SIGSEGV.  This is the signature
+seen in the bootstrap CI ("proot info: vpid 1: terminated with signal
+11" right after nixos-rebuild-ng finishes the switch).
+
+restore_original_regs has to go back to false for the same reason
+chain_next_syscall() clears it: the sysexit stage would otherwise
+restore the stale pre-syscall result over the one PRoot just wrote.
+
+--- a/src/syscall/chain.c
++++ b/src/syscall/chain.c
+@@ -186,6 +186,17 @@
+ 	instr_pointer = peek_reg(tracee, CURRENT, INSTR_POINTER);
+ 	poke_reg(tracee, INSTR_POINTER, instr_pointer - get_systrap_size(tracee));
+ 
++	/* Original register values must not be restored on top of the
++	 * result this syscall is about to produce (same as
++	 * chain_next_syscall()). */
++	tracee->restore_original_regs = false;
++
++	/* Break after the exit of this syscall, otherwise the rewound trap
++	 * is resumed with a stale request and never reports back.  This
++	 * mirrors chain_next_syscall(), which the chained-syscall path this
++	 * function replaced. */
++	tracee->restart_how = PTRACE_SYSCALL;
++
+ 	return 0;
+ }
+ 

@@ -145,11 +145,21 @@
               ++ map (
                 file:
                 toSmfhFile (
-                  file
-                  // {
-                    source = "/etc/static/${file.target}";
-                    target = "/etc/${file.target}";
-                  }
+                  if (file.mode == "symlink") then
+                    (
+                      file
+                      // {
+                        source = "/etc/static/${file.target}";
+                        target = "/etc/${file.target}";
+                      }
+                    )
+                  else
+                    (
+                      file
+                      // {
+                        target = "/etc/${file.target}";
+                      }
+                    )
                 )
               ) enabledEtc
             ))

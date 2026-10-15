@@ -47,7 +47,7 @@ def run(d):
     nod = d.app("com.termux.nix", url=APK)
     nod.permissions.allow_notifications()
     nod.launch()
-    time.sleep(2)
+    time.sleep(4)
 
     wait_for(d, "Bootstrap zipball location")
     screenshot(d, "bootstrap-prompt")
@@ -58,15 +58,23 @@ def run(d):
 
     d.ui(text="OK").click()
     screenshot(d, "ok-clicked")
-    
+
     wait_for(d, "The new configuration is", timeout=600)
+    screenshot(d, "new-configuration")
+
+    wait_for(d, "bash-")
     screenshot(d, "new-configuration-complete")
+
+    nod.stop()
+    time.sleep(4)
+    nod.launch()
+    time.sleep(4)
 
     wait_for(d, "bash-")
     screenshot(d, "new-configuration-bash")
 
     run_cmd(d, "nix --version")
-    run_cmd(d, 'nix eval --expr "1 + 1"', wait=3)
+    run_cmd(d, 'nix eval --expr "1 + 1"', wait=30)
     run_cmd(d, "nix shell nixpkgs#fastfetch --command fastfetch --version", wait=60)
 
     screenshot(d, "nix-tests-complete")

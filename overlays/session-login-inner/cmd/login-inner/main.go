@@ -114,7 +114,23 @@ func main() {
 			}
 			configFile := cmd.String("config")
 			if configFile == "" {
-				configFile = "@config_file@"
+				exePath, err := os.Executable()
+				if err != nil {
+					return ctx, eris.New("failed to get executable path")
+				}
+				exePath, err = filepath.Abs(exePath)
+				if err != nil {
+					return ctx, eris.New("failed to get absolute path")
+				}
+				base := filepath.Base(exePath)
+				if base != "login-inner" {
+					return ctx, eris.New("failed to find login-inner")
+				}
+				binDir := filepath.Dir(exePath)
+				if filepath.Base(binDir) != "bin" {
+					return ctx, eris.New("login-inner is not inside bin/")
+				}
+				configFile = filepath.Join(filepath.Dir(binDir), "etc", "login-inner.toml")
 			}
 			if err := config.LoadFilesByFormat(config.Toml, configFile); err != nil {
 				return ctx, err

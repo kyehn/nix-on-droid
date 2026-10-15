@@ -78,9 +78,17 @@ stdenv.mkDerivation (finalAttrs: {
     # instead of queuing through chained syscalls, so an intervening
     # signal cannot confuse the chain bookkeeping.
     ./fix-restart-syscall-no-chain.patch
+    # ...and it has to resume the ptracer the way chain_next_syscall()
+    # did, or the rewound trap is never reported back.
+    ./fix-restart-syscall-set-restart-how.patch
     # A restarted wait must not poke SYSARG_RESULT: on ARM it shares a
     # register with SYSARG_1 and would corrupt the wait pid argument.
     ./fix-wait-exit-no-clobber-args.patch
+    # A ptracee event must not re-enter the chained syscall list:
+    # restart_original_syscall() no longer creates the entry that
+    # chain_next_syscall() asserts on, so the ptracer would resume at a
+    # stale instruction pointer.
+    ./fix-wait-event-no-chained-syscall.patch
     # PTRACE_O_TRACESECCOMP is rejected under ptrace emulation; proot
     # never forwards seccomp traps, so fail loudly instead of hanging.
     ./fix-ptrace-traceseccomp-einval.patch
