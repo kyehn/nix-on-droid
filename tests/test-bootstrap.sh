@@ -117,8 +117,6 @@ exec "${BWRAP_CMD[@]}" \
 	--setenv ANDROID_DATA_ROOT "/data" \
 	--setenv ANDROID_CACHE "/data/data/${PACKAGE_NAME}/cache" \
 	--setenv ANDROID_SOCKET "unix" \
-	--setenv NIX_REMOTE "" \
-	--setenv NIX_CONF_DIR "${APP_FILES}/home/.config/nix" \
 	/system/bin/sh -c "
         set -euo pipefail
         cd ${INSTALLATION_DIR}
@@ -145,6 +143,5 @@ exec "${BWRAP_CMD[@]}" \
         
         chmod 0555 /
 
-        exec ${INSTALLATION_DIR}/bin/login
         exec ${INSTALLATION_DIR}/bin/login
     "

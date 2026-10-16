@@ -58,23 +58,33 @@ def run(d):
 
     d.ui(text="OK").click()
     screenshot(d, "ok-clicked")
+    
+    wait_for(d, "bash-", timeout=120)
+    screenshot(d, "bootstrap-bash")
 
+    run_cmd(d, "nix --extra-experimental-features nix-command --extra-experimental-features flakes flake new ~/.config/nix-on-droid/template --template github:kyehn/nix-on-droid/unstable")
+    wait_for(d, "template/nix-on-droid.nix")
+    screenshot(d, "template-wrote")
+    
+    run_cmd(d, "nix --extra-experimental-features nix-command --extra-experimental-features flakes run nixpkgs#nixos-rebuild-ng -- switch --flake ~/.config/nix-on-droid/template#default --impure --accept-flake-config --verbose --print-build-logs --show-trace --use-substitutes")
     wait_for(d, "The new configuration is", timeout=600)
     screenshot(d, "new-configuration")
+
+    time.sleep(15)
 
     wait_for(d, "bash-")
     screenshot(d, "new-configuration-complete")
 
     nod.stop()
-    time.sleep(4)
+    time.sleep(7)
     nod.launch()
-    time.sleep(4)
+    time.sleep(7)
 
     wait_for(d, "bash-")
     screenshot(d, "new-configuration-bash")
 
     run_cmd(d, "nix --version")
-    run_cmd(d, 'nix eval --expr "1 + 1"', wait=30)
+    run_cmd(d, 'nix eval --expr "1 + 1"', wait=5)
     run_cmd(d, "nix shell nixpkgs#fastfetch --command fastfetch --version", wait=60)
 
     screenshot(d, "nix-tests-complete")

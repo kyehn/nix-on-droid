@@ -1,19 +1,8 @@
-name: bootstrap
+name: test
 on:
   workflow_dispatch:
-    inputs:
-      release_tag_name:
-        description: release tag name
-        required: false
-        default: ""
-        type: choice
-        options:
-          - ""
-          - bootstrap-unstable
-permissions:
-  contents: write
 jobs:
-  bootstrap:
+  test:
     strategy:
       fail-fast: false
       matrix:
@@ -42,24 +31,6 @@ jobs:
       - run: bash tests/test-bootstrap.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - if: ${{ runner.arch == 'ARM64' && inputs.release_tag_name != '' }}
-        run: |
-          git tag --force ${{ inputs.release_tag_name }}
-          git push origin ${{ inputs.release_tag_name }} --force
-      - uses: softprops/action-gh-release@master
-        if: ${{ inputs.release_tag_name != '' }}
-        with:
-          tag_name: ${{ inputs.release_tag_name }}
-          files: result/bootstrap-*.zip
-      - if: ${{ runner.arch == 'ARM64' }}
-        run: |
-          find . -type f -exec sed -i 's#/data/data/com.termux.nix/files#/data/data/com.termux/files#g' {} +
-          nix build --verbose --print-build-logs --impure --print-out-paths .#bootstrap-zip
-      - if: ${{ runner.arch == 'ARM64' }}
-        uses: actions/upload-artifact@main
-        with:
-          path: result/bootstrap-*.zip
-          archive: false
       - if: ${{ runner.arch == 'X64' }}
         run: nix build github:t184256/droidctl --out-link /tmp/droidctl
       - if: ${{ runner.arch == 'X64' }}
@@ -68,9 +39,7 @@ jobs:
           api-level: 35
           arch: x86_64
           target: google_apis
-          force-avd-creation: false
-          emulator-options: -no-snapshot-load -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
-          disable-animations: true
+          disable-spellchecker: true
           script: >
             set -e && trap 'pkill --exact --signal SIGKILL crashpad_handle || true' EXIT && adb push result/bootstrap-x86_64.zip /data/local/tmp/ && /tmp/droidctl/bin/droidctl run tests/bootstrap_test.py
 
@@ -79,4 +48,3 @@ jobs:
         with:
           name: screenshots
           path: screenshots
-          if-no-files-found: warn

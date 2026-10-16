@@ -1,0 +1,58 @@
+name: build
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'release'
+        required: false
+        default: false
+        type: boolean
+jobs:
+  build:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - ubuntu-latest
+          - ubuntu-26.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@main
+      - uses: actions/checkout@main
+        with:
+          repository: ${{ github.actor }}/kudzu
+          path: result-kudzu
+      - uses: ./result-kudzu/.github/actions/install-nix
+      - uses: cachix/cachix-action@master
+        with:
+          name: ${{ secrets.CACHIX_NAME }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - run: |
+          rm -f ~/.config/nix/nix.conf
+          nix build --verbose --print-build-logs --impure --print-out-paths .#bootstrap-zip
+      - if: ${{ runner.arch == 'X64' && inputs.release }}
+        run: |
+          git tag --force 0.2.0
+          git push origin 0.2.0 --force
+      - uses: softprops/action-gh-release@master
+        if: ${{ inputs.release }}
+        with:
+          tag_name: 0.2.0
+          files: result/bootstrap-*.zip
+      - if: ${{ inputs.release }}
+        run: |
+          find . -type f -exec sed -i 's#/data/data/com.termux.nix/files#/data/data/com.termux/files#g' {} +
+          nix build --verbose --print-build-logs --impure --print-out-paths .#bootstrap-zip
+          pushd result
+          for f in bootstrap-*.zip; do
+            install -D --mode=0644 "$f" "$GITHUB_WORKSPACE/com.termux-$f"
+          done
+          popd
+      - if: ${{ inputs.release }}
+        uses: softprops/action-gh-release@master
+        with:
+          tag_name: 0.2.0
+          files: com.termux-bootstrap-*.zip

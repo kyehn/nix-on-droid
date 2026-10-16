@@ -71,18 +71,7 @@ type Config struct {
 		ConfigPath string   `mapstructure:"config_path"`
 		ExtraArgs  []string `mapstructure:"extra_args"`
 	} `mapstructure:"process_compose"`
-	FallbackShell string `mapstructure:"fallback_shell"`
-	FirstRun      struct {
-		Enable      bool `mapstructure:"enable"`
-		Environment []struct {
-			Name  string `mapstructure:"name"`
-			Value string `mapstructure:"value"`
-		} `mapstructure:"environment"`
-		Commands []struct {
-			Argv0 string   `mapstructure:"argv0"`
-			Argv  []string `mapstructure:"argv"`
-		} `mapstructure:"commands"`
-	} `mapstructure:"first_run"`
+	FirstRun bool `mapstructure:"first_run"`
 }
 
 func main() {
@@ -180,19 +169,16 @@ func main() {
 					}
 				}
 			}
-			if cfg.FirstRun.Enable {
+			if _, err := os.Stat("/etc/UNINTIALISED"); err == nil {
+			if cfg.FirstRun {
 				if err := doFirstRun(dryRun); err != nil {
 					return err
 				}
 			}
+			}
 			target := cfg.User.Shell
 			if _, err := os.Stat(target); err != nil {
-				if _, err := os.Stat(cfg.FallbackShell); err == nil {
-					sugar.Warn("failed to find login target, use fallback shell: " + cfg.FallbackShell)
-					target = cfg.FallbackShell
-				} else {
-					return eris.New("failed to find login target")
-				}
+				return eris.New("failed to find login target")
 			}
 			if dryRun {
 				sugar.Info("exec: ", target)
@@ -301,30 +287,11 @@ func doFirstRun(dryRun bool) error {
 		return eris.New("lock busy")
 	}
 	defer lock.Unlock()
-	for _, env := range cfg.FirstRun.Environment {
-		if dryRun {
-			sugar.Infof("dry-run: env %s=%s", env.Name, env.Value)
-		} else {
-			if err := os.Setenv(env.Name, env.Value); err != nil {
-				return err
-			}
-		}
-	}
 	if err := setUser(dryRun); err != nil {
 		return err
 	}
-	for _, commandArgs := range cfg.FirstRun.Commands {
-		command := exec.Command(commandArgs.Argv0, commandArgs.Argv...)
-		command.Stdout = os.Stdout
-		command.Stderr = os.Stderr
-		command.Stdin = nil
-		if dryRun {
-			sugar.Infof("dry-run: %s %s", commandArgs.Argv0, strings.Join(commandArgs.Argv, " "))
-		} else {
-			if err := command.Run(); err != nil {
-				return eris.Wrap(err, "First run failed")
-			}
-		}
-	}
+    if err := os.Remove("/etc/UNINTIALISED"); err != nil {
+        return err
+    }
 	return nil
 }

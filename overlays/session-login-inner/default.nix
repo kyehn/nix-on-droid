@@ -5,7 +5,6 @@
   runCommand,
   formats,
   process-compose,
-  nix,
 }:
 
 let
@@ -64,64 +63,7 @@ runCommand base.name
             "-t=false"
           ];
         };
-        first_run = {
-          enable = config.system.build.bootstrapBuild;
-          environment = [
-            {
-              name = "GC_NPROCS";
-              value = "1";
-            }
-            {
-              name = "NIXOS_REBUILD_I_UNDERSTAND_THE_CONSEQUENCES_PLEASE_BREAK_MY_SYSTEM";
-              value = "1";
-            }
-          ];
-          commands = [
-            {
-              argv0 = lib.getExe' nix "nix-env";
-              argv = [
-                "--switch-profile"
-                "/nix/var/nix/profiles/system"
-              ];
-            }
-            {
-              argv0 = lib.getExe nix;
-              argv = [
-                "--extra-experimental-features"
-                "nix-command"
-                "--extra-experimental-features"
-                "flakes"
-                "flake"
-                "new"
-                "${config.users.users.nix-on-droid.home}/.config/nix-on-droid/template"
-                "--template"
-                "${config.system.build.flake.nix-on-droid}"
-              ];
-            }
-            {
-              argv0 = lib.getExe nix;
-              argv = [
-                "--extra-experimental-features"
-                "nix-command"
-                "--extra-experimental-features"
-                "flakes"
-                "run"
-                "nixpkgs#nixos-rebuild-ng"
-                "--"
-                "switch"
-                "--flake"
-                "${config.users.users.nix-on-droid.home}/.config/nix-on-droid/template#default"
-                "--impure"
-                "--accept-flake-config"
-                "--verbose"
-                "--print-build-logs"
-                "--show-trace"
-                "--use-substitutes"
-              ];
-            }
-          ];
-          fallback_shell = config.system.build.installationDir + "/bin/sh";
-        };
+        first_run = config.system.build.bootstrapBuild;
       }
     } $out/etc/${base.meta.mainProgram}.toml
   ''

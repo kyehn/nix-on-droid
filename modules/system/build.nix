@@ -77,27 +77,33 @@
             mode = "0755";
           };
         };
-        etc."${pkgs.session-login.meta.mainProgram}.toml" = {
-          source =
-            let
-              proot_binary_path =
-                config.system.build.installationDir + "/bin/" + pkgs.proot-termux.meta.mainProgram;
-            in
-            (pkgs.formats.toml { }).generate "config.toml" {
-              login_inner_binary_path = lib.getExe session-login-inner;
-              installation_dir = config.system.build.installationDir;
-              pending_artifacts = [ proot_binary_path ];
-              user = {
-                name = config.users.users.nix-on-droid.name;
-                home = config.users.users.nix-on-droid.home;
+        etc = {
+          "UNINTIALISED" = {
+            text = "";
+            mode = "0644";
+          };
+          "${pkgs.session-login.meta.mainProgram}.toml" = {
+            source =
+              let
+                proot_binary_path =
+                  config.system.build.installationDir + "/bin/" + pkgs.proot-termux.meta.mainProgram;
+              in
+              (pkgs.formats.toml { }).generate "config.toml" {
+                login_inner_binary_path = lib.getExe session-login-inner;
+                installation_dir = config.system.build.installationDir;
+                pending_artifacts = [ proot_binary_path ];
+                user = {
+                  name = config.users.users.nix-on-droid.name;
+                  home = config.users.users.nix-on-droid.home;
+                };
+                proot = {
+                  bind = config.system.build.proot.bind;
+                  extra_args = config.system.build.proot.extraArgs;
+                  binary_path = proot_binary_path;
+                };
               };
-              proot = {
-                bind = config.system.build.proot.bind;
-                extra_args = config.system.build.proot.extraArgs;
-                binary_path = proot_binary_path;
-              };
-            };
-          mode = "0644";
+            mode = "0644";
+          };
         };
       }
       // (lib.optionalAttrs config.system.build.bootstrapBuild {

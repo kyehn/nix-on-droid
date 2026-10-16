@@ -156,6 +156,7 @@ in
         HOME = config.users.users.nix-on-droid.home;
         USER = config.users.users.nix-on-droid.name;
         GC_NPROCS = 1;
+        NIXOS_REBUILD_I_UNDERSTAND_THE_CONSEQUENCES_PLEASE_BREAK_MY_SYSTEM = 1;
       };
       profileRelativeEnvVars = config.environment.profileRelativeSessionVariables;
       etc.set-environment.source = config.system.build.setEnvironment;
