@@ -170,11 +170,11 @@ func main() {
 				}
 			}
 			if _, err := os.Stat("/etc/UNINTIALISED"); err == nil {
-			if cfg.FirstRun {
-				if err := doFirstRun(dryRun); err != nil {
-					return err
+				if cfg.FirstRun {
+					if err := doFirstRun(dryRun); err != nil {
+						return err
+					}
 				}
-			}
 			}
 			target := cfg.User.Shell
 			if _, err := os.Stat(target); err != nil {
@@ -290,8 +290,8 @@ func doFirstRun(dryRun bool) error {
 	if err := setUser(dryRun); err != nil {
 		return err
 	}
-    if err := os.Remove("/etc/UNINTIALISED"); err != nil {
-        return err
-    }
+	if err := os.Remove("/etc/UNINTIALISED"); err != nil {
+		return err
+	}
 	return nil
 }

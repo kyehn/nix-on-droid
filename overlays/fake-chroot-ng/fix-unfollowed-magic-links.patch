@@ -1,0 +1,71 @@
+Subject: [PATCH] monitor: do not expand magic links that are not followed
+
+/proc/<pid>/{exe,cwd,root} are magic links: readlink(2) resolves them,
+but lstat(2) reports the link itself -- S_IFLNK, st_size 0 -- and only
+following it leads to the target.  The path walk expanded them whatever
+the caller asked for, so an lstat saw the target's file type, and code
+that checks the type before reading a link concluded the path was not a
+symlink at all.
+
+Every Nix 2.3x nix does exactly that to /proc/self/exe: getSelfExe()
+reads it with std::filesystem::read_symlink(), whose libstdc++
+implementation lstats first and throws EINVAL when S_ISLNK is false.
+On chroot-ng that took `nix --version` down at startup with
+
+    error: reading symbolic link "/proc/self/exe": Invalid argument
+
+proc_magic() now takes the walk's verdict -- is this the last component,
+is it about to be followed -- and, when the link is the answer rather
+than a step towards the target, returns PROC_MAGIC_HOST so the name
+goes to the kernel as it stands.  The kernel then reports the magic
+link the way /proc does.  Following the link is unchanged.
+
+---
+ src/monitor/dispatch.c |   21 +++++++++++++++++++--
+ 1 file changed, 19 insertions(+), 2 deletions(-)
+
+diff --git a/src/monitor/dispatch.c b/src/monitor/dispatch.c
+--- a/src/monitor/dispatch.c
++++ b/src/monitor/dispatch.c
+@@ -720,7 +720,8 @@
+     return pl && strcmp(canon + pl, "fd") == 0;
+ }
+ 
+-static int proc_magic(char *cur, size_t sz) {
++static int proc_magic(char *cur, size_t sz, int last, int deref_final,
++                      int want_dir) {
+     size_t pl = proc_pid_prefix(cur, 0);
+     if (!pl)
+         return PROC_MAGIC_NONE;
+@@ -784,6 +785,21 @@
+      * verdict, and the walk answers it -ENAMETOOLONG — the XLATE_TOOLONG
+      * rule, for a name the view cannot express. The fixup is handed the whole
+      * buffer, so a target that fills it is told apart from one that fits. */
++    /* Not followed -- an lstat or an O_NOFOLLOW open on the link itself --
++     * the kernel's symlink is the answer, and expanding it here answered as
++     * if it had been followed. lstat then reported the target's file type, so
++     * a path that is plainly S_IFLNK was reached only by code that had
++     * already looked and seen a regular file (or a directory). Every Nix
++     * 2.3x nix goes through exactly that: read_symlink() in libstdc++ lstats
++     * first and throws EINVAL on anything that is not a link, and getSelfExe
++     * calls it on /proc/self/exe before it does anything else, so `nix
++     * --version` died at startup with "reading symbolic link
++     * \"/proc/self/exe\": Invalid argument". PROC_MAGIC_HOST hands the name
++     * to the kernel, which reports the magic link the way /proc does, and the
++     * walk's not-followed branch (which sees the same verdict) leaves it at
++     * that. */
++    if (last && !deref_final && !want_dir)
++        return PROC_MAGIC_HOST;
+     char link[CNG_PATH_MAX], tmp[CNG_PATH_MAX];
+     if (pl + vl >= sizeof link)
+         return PROC_MAGIC_NONE;
+@@ -1208,7 +1224,8 @@
+          * name the view cannot express (see dev_magic). */
+         if (dev_magic(canon, sizeof canon) < 0)
+             return -ENAMETOOLONG;
+-        int magic = proc_magic(canon, sizeof canon);
++        int magic = proc_magic(canon, sizeof canon, last, deref_final,
++                               want_dir);
+         /* A magic link is a link: RESOLVE_NO_MAGICLINKS refuses it, and
+          * RESOLVE_NO_SYMLINKS implies NO_MAGICLINKS. Both are ELOOP, which is
+          * what the kernel answers for a constraint it cannot satisfy by

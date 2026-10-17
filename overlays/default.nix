@@ -28,6 +28,12 @@ in
     talloc = prev.pkgsStatic.pkgsLLVM.callPackage ./talloc.nix { };
     stdenv = prev.pkgsStatic.pkgsLLVM.stdenvAdapters.makeStaticBinaries prev.pkgsStatic.pkgsLLVM.stdenv;
   };
+  fake-chroot-ng = prev.pkgsStatic.pkgsLLVM.callPackage ./fake-chroot-ng {
+    stdenv = prev.pkgsStatic.pkgsLLVM.stdenvAdapters.makeStaticBinaries prev.pkgsStatic.pkgsLLVM.stdenv;
+  };
+  arm64emu-user = prev.pkgsStatic.pkgsLLVM.callPackage ./arm64emu-user.nix {
+    stdenv = prev.pkgsStatic.pkgsLLVM.stdenvAdapters.makeStaticBinaries prev.pkgsStatic.pkgsLLVM.stdenv;
+  };
   smfh = prev.smfh.overrideAttrs (oldAttrs: {
     postPatch = (oldAttrs.postPatch or "") + ''
       substituteInPlace crates/smfh-core/src/file_util.rs \
