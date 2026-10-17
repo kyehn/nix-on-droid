@@ -89,11 +89,9 @@ def run(d):
     wait_for(d, "bash-")
     screenshot(d, "new-configuration-bash")
 
-    run_cmd(d, "nix --version")
-    run_cmd(d, 'nix eval --expr "1 + 1"', wait=5)
-    run_cmd(d, "nix shell nixpkgs#fastfetch --command fastfetch --version", wait=60)
+    run_cmd(d, "nix run nixpkgs#fastfetch")
+    wait_for(d, "Terminal", timeout=120)
+    screenshot(d, "fastfetch")
 
-    screenshot(d, "nix-tests-complete")
-    print("✓ Bootstrap test completed successfully")
-
+    print("test success")
     return nod
