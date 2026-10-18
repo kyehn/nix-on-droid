@@ -7,7 +7,7 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "proot-termux";
-  version = "5.1.107.97-unstable-2026-10-18";
+  version = "5.1.107.98-unstable-2026-10-18";
 
   src = fetchFromGitHub {
     repo = "proot";
