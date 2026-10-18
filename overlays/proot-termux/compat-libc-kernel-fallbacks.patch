@@ -125,7 +125,7 @@ diff --git a/src/extension/sysvipc/sysvipc_shm.c b/src/extension/sysvipc/sysvipc
 index b14eb65..aae3350 100644
 --- a/src/extension/sysvipc/sysvipc_shm.c
 +++ b/src/extension/sysvipc/sysvipc_shm.c
-@@ -20,9 +20,10 @@
+@@ -20,10 +20,11 @@
  #include <string.h> /* memset */
  #include <time.h> /* time */
  #include <fcntl.h> /* open, fcntl */
@@ -134,6 +134,7 @@ index b14eb65..aae3350 100644
  #ifdef __ANDROID__
 -#include <linux/ashmem.h> /* ASHMEM_* */
 +#include "compat.h" /* <linux/ashmem.h>, or a fallback.  */
+ #include <stdio.h> /* snprintf */
  #else
  #include <unistd.h> /* ftruncate */
  #endif
