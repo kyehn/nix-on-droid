@@ -5,13 +5,13 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "fake-chroot-ng";
-  version = "1.1.0-unstable-2026-10-14";
+  version = "1.5.0-unstable-2026-10-25";
 
   src = fetchFromGitHub {
     owner = "sylirre";
     repo = "fake-chroot-ng";
-    rev = "12d07c1a4da8d4c159899633fbfab3bd8ceeeee8";
-    hash = "sha256-J22RQ5/TEttI+HOnshiIMNH51kN5jNOh2hC1YX+iW68=";
+    rev = "9afe1d5361d633f0dea8e8fffac3fe7f0d31d622";
+    hash = "sha256-thcJZDr4XBTSHuGUz3r4JbCTWJpZ/9OxmlqmF2WYI+w=";
   };
 
   patches = [ ./fix-unfollowed-magic-links.patch ];

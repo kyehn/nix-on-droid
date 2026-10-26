@@ -269,7 +269,7 @@ index 94cb350..11a3de1 100644
  	}
  
 diff --git a/src/extension/fake_id0/fake_id0.c b/src/extension/fake_id0/fake_id0.c
-index cb24728..3c68c42 100644
+index 9402732..5be5be3 100644
 --- a/src/extension/fake_id0/fake_id0.c
 +++ b/src/extension/fake_id0/fake_id0.c
 @@ -21,6 +21,7 @@
@@ -298,7 +298,7 @@ index cb24728..3c68c42 100644
  				node->mode = perms.st_mode;
  			else
  				node->mode = peek_reg(tracee, ORIGINAL, SYSARG_3);
-@@ -524,7 +525,7 @@ static void override_permissions(const Tracee *tracee, const char *path, bool is
+@@ -525,7 +526,7 @@ static void override_permissions(const Tracee *tracee, const char *path, bool is
  	 * called in reverse order.  */
  	talloc_set_destructor(node, restore_mode);
  
@@ -307,7 +307,7 @@ index cb24728..3c68c42 100644
  
  	return;
  }
-@@ -1231,7 +1232,7 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
+@@ -1232,7 +1233,7 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
  
  		/* If the metafile exists and the original file does not, delete it. */
  		if(path_exists(meta_path) == 0) 
@@ -316,7 +316,7 @@ index cb24728..3c68c42 100644
  
  		return 0;
  	}	
-@@ -1435,7 +1436,7 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
+@@ -1436,7 +1437,7 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
  		if(status < 0)
  			return status;
  
@@ -325,7 +325,7 @@ index cb24728..3c68c42 100644
  		if(status < 0)
  			return status;
  
-@@ -1454,7 +1455,7 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
+@@ -1455,7 +1456,7 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
  		if(path_exists(meta_path) != 0)
  			return 0;
  
@@ -461,25 +461,25 @@ index eddd331..e940922 100644
             return status;
          }
 diff --git a/src/extension/link2symlink/link2symlink.c b/src/extension/link2symlink/link2symlink.c
-index 6432d16..1c29fe8 100644
+index d54d3f0..5a04244 100644
 --- a/src/extension/link2symlink/link2symlink.c
 +++ b/src/extension/link2symlink/link2symlink.c
 @@ -1,4 +1,5 @@
  #include <stdio.h>     /* rename(2), renameat(2), */
 +#include "android_compat.h"
- #include <stdlib.h>    /* atoi */
+ #include <stdlib.h>    /* getenv, free, */
  #include <fcntl.h>     /* open(2), openat(2), AT_FDCWD, O_*, */
  #include <unistd.h>    /* symlink(2), symlinkat(2), readlink(2), lstat(2), unlink(2), unlinkat(2)*/
-@@ -232,7 +233,7 @@ static int l2s_access(const char *path)
+@@ -250,7 +251,7 @@ static int l2s_lstat(const char *path, struct stat *statl)
+ 	if (l2s_entry(path, &dir_fd, &name) < 0)
+ 		return -1;
  
- 	/* No AT_SYMLINK_NOFOLLOW: access(2) follows, and a dangling
- 	 * intermediate has always counted as a free slot here.  */
--	return (dir_fd < 0) ? access(path, F_OK) : faccessat(dir_fd, name, F_OK, 0);
-+	return (dir_fd < 0) ? ac_faccessat(path, F_OK) : faccessat(dir_fd, name, F_OK, 0);
+-	return (dir_fd < 0) ? lstat(path, statl) : fstatat(dir_fd, name, statl, AT_SYMLINK_NOFOLLOW);
++	return (dir_fd < 0) ? ac_lstat(path, statl) : fstatat(dir_fd, name, statl, AT_SYMLINK_NOFOLLOW);
  }
  
  static int l2s_symlink(const char *target, const char *path)
-@@ -243,7 +244,7 @@ static int l2s_symlink(const char *target, const char *path)
+@@ -261,7 +262,7 @@ static int l2s_symlink(const char *target, const char *path)
  	if (l2s_entry(path, &dir_fd, &name) < 0)
  		return -1;
  
@@ -488,7 +488,7 @@ index 6432d16..1c29fe8 100644
  }
  
  static int l2s_unlink(const char *path)
-@@ -254,7 +255,7 @@ static int l2s_unlink(const char *path)
+@@ -272,7 +273,7 @@ static int l2s_unlink(const char *path)
  	if (l2s_entry(path, &dir_fd, &name) < 0)
  		return -1;
  
@@ -497,7 +497,7 @@ index 6432d16..1c29fe8 100644
  }
  
  static int l2s_rename(const char *old_path, const char *new_path)
-@@ -270,7 +271,7 @@ static int l2s_rename(const char *old_path, const char *new_path)
+@@ -288,7 +289,7 @@ static int l2s_rename(const char *old_path, const char *new_path)
  		return -1;
  
  	if (old_dir_fd < 0 && new_dir_fd < 0)
@@ -506,7 +506,16 @@ index 6432d16..1c29fe8 100644
  
  	/* An absolute path with AT_FDCWD is the side that isn't in the
  	 * l2s directory -- the file being moved into it, typically.  */
-@@ -608,7 +609,7 @@ static int move_and_symlink_path(Tracee *tracee, Reg sysarg, Reg link_target_sys
+@@ -741,7 +742,7 @@ static int link_symbolic_link(Tracee *tracee, const char target[PATH_MAX], Reg l
+ 	if (status < 0)
+ 		return status;
+ 
+-	if (symlink(target, link) < 0)
++	if (ac_symlink(target, link) < 0)
+ 		return -errno;
+ 
+ 	poke_reg(tracee, SYSARG_RESULT, 0);
+@@ -779,7 +780,7 @@ static int move_and_symlink_path(Tracee *tracee, Reg sysarg, Reg link_target_sys
  		return -ENAMETOOLONG;
  
  	/* Sanity check: directories can't be linked.  */
@@ -515,34 +524,40 @@ index 6432d16..1c29fe8 100644
  	if (status < 0)
  		return errno > 0 ? -errno : -ENOENT;
  	if (S_ISDIR(statl.st_mode))
-@@ -693,7 +694,7 @@ static int move_and_symlink_path(Tracee *tracee, Reg sysarg, Reg link_target_sys
- 			return status;
+@@ -900,7 +901,7 @@ static int move_and_symlink_path(Tracee *tracee, Reg sysarg, Reg link_target_sys
+ 		status = notify_extensions(tracee, LINK2SYMLINK_RENAME, (intptr_t) original, (intptr_t) final);
  
  		/* Symlink the original path to the intermediate one.  */
--		status = symlink(intermediate, original);
-+		status = ac_symlink(intermediate, original);
- 		if (status < 0)
- 			return status;
- 	} else {
-@@ -727,7 +728,7 @@ static int move_and_symlink_path(Tracee *tracee, Reg sysarg, Reg link_target_sys
+-		if (status >= 0 && symlink(intermediate, original) < 0)
++		if (status >= 0 && ac_symlink(intermediate, original) < 0)
+ 			status = -errno;
+ 
+ 		/* Otherwise put the file back where it was, unless its name
+@@ -945,7 +946,7 @@ static int move_and_symlink_path(Tracee *tracee, Reg sysarg, Reg link_target_sys
+ 
  	/* Perform symlink() operation within PRoot.  */
  	status = read_path(tracee, final, peek_reg(tracee, CURRENT, link_target_sysarg));
- 	if (status >= 0) {
--		status = symlink(intermediate, final);
-+		status = ac_symlink(intermediate, final);
- 		if (status < 0) status = -errno;
- 	}
+-	if (status >= 0 && symlink(intermediate, final) < 0)
++	if (status >= 0 && ac_symlink(intermediate, final) < 0)
+ 		status = -errno;
  	if (status < 0) {
-@@ -767,7 +768,7 @@ static int decrement_link_count(Tracee *tracee, Reg sysarg)
- 		return -ENAMETOOLONG;
+ 		(void) decrement_intermediate_count(tracee, original, intermediate);
+@@ -1140,12 +1141,12 @@ static int decrement_removed_link_count(Tracee *tracee, const char link[PATH_MAX
+ 	*slash = '\0';
  
- 	/* Check if it is a converted link already.  */
--	status = lstat(original, &statl);
-+	status = ac_lstat(original, &statl);
- 	if (status < 0)
- 		return 0;
+ 	if (stat(directory, &statl) < 0
+-	    || chmod(directory, (statl.st_mode & 07777) | S_IWUSR) < 0)
++	    || ac_chmod(directory, (statl.st_mode & 07777) | S_IWUSR) < 0)
+ 		return status;
  
-@@ -938,7 +939,7 @@ static int handle_sysexit_end(Extension *extension)
+ 	status = decrement_intermediate_count(tracee, link, intermediate);
+ 
+-	(void) chmod(directory, statl.st_mode & 07777);
++	(void) ac_chmod(directory, statl.st_mode & 07777);
+ 
+ 	return status;
+ }
+@@ -1438,7 +1439,7 @@ static int handle_sysexit_end(Extension *extension)
  			name++;
  
  		/* Check if it is a link */
@@ -551,16 +566,16 @@ index 6432d16..1c29fe8 100644
  
  		if (strncmp(name, PREFIX, strlen(PREFIX)) == 0) {
  			if (S_ISLNK(statl.st_mode)) {
-@@ -970,7 +971,7 @@ static int handle_sysexit_end(Extension *extension)
- 		if (size < 0)
- 			return size;
+@@ -1478,7 +1479,7 @@ static int handle_sysexit_end(Extension *extension)
  
--		final_proc: status = lstat(final,&finalStat);
-+		final_proc: status = ac_lstat(final,&finalStat);
- 		if (status < 0)
- 			return status;
+ 		final_proc:
+ 		link_count = get_link_count(final);
+-		if (link_count < 0 || lstat(final, &finalStat) < 0)
++		if (link_count < 0 || ac_lstat(final, &finalStat) < 0)
+ 			return 0;
  
-@@ -1176,7 +1177,7 @@ static int handle_linkat_from_proc_fd(Tracee *tracee) {
+ 		finalStat.st_nlink = link_count;
+@@ -1689,7 +1690,7 @@ static int handle_linkat_from_proc_fd(Tracee *tracee) {
  	 * Delete target file (we'll be replacing it).
  	 * Ignore result of unlink, file could or could not exist,
  	 * we'll report failure of open though  */
@@ -910,7 +925,7 @@ index 8c9f361..fc2e435 100644
  			continue;
  		}
 diff --git a/src/syscall/socket.c b/src/syscall/socket.c
-index 2ed4618..38327a1 100644
+index 6ada57a..d35b5a5 100644
 --- a/src/syscall/socket.c
 +++ b/src/syscall/socket.c
 @@ -20,6 +20,7 @@
@@ -921,7 +936,7 @@ index 2ed4618..38327a1 100644
  #include <stddef.h>      /* offsetof(3), */
  #include <strings.h>     /* bzero(3), */
  #include <string.h>      /* strncpy(3), strlen(3), */
-@@ -227,7 +228,7 @@ int translate_send_address(Tracee *tracee, word_t *address, int size)
+@@ -260,7 +261,7 @@ int translate_send_address(Tracee *tracee, word_t *address, int size)
  	 * exists there unless the translated path is too long for it.  */
  	if (status == 0 && (user_path[0] == '/' || strlen(host_path) > sizeof_path)) {
  		saved_errno = errno;
@@ -931,7 +946,7 @@ index 2ed4618..38327a1 100644
  		errno = saved_errno;
  	}
 diff --git a/src/tracee/event.c b/src/tracee/event.c
-index 4ded5ae..2a97fec 100644
+index 65b578a..9ea9760 100644
 --- a/src/tracee/event.c
 +++ b/src/tracee/event.c
 @@ -21,6 +21,7 @@
@@ -942,7 +957,7 @@ index 4ded5ae..2a97fec 100644
  #include <sys/types.h>  /* pid_t, */
  #include <sys/ptrace.h> /* ptrace(1), PTRACE_*, */
  #include <sys/types.h>  /* waitpid(2), */
-@@ -99,7 +100,7 @@ int launch_process(Tracee *tracee, char *const argv[])
+@@ -106,7 +107,7 @@ int launch_process(Tracee *tracee, char *const argv[])
  	if (tracee->verbose > 0)
  		list_open_fd(tracee);
  
@@ -951,7 +966,7 @@ index 4ded5ae..2a97fec 100644
  	switch(pid) {
  	case -1:
  		note(tracee, ERROR, SYSTEM, "fork()");
-@@ -133,9 +134,19 @@ int launch_process(Tracee *tracee, char *const argv[])
+@@ -140,9 +141,19 @@ int launch_process(Tracee *tracee, char *const argv[])
  		 * does the same thing. */
  		kill(getpid(), SIGSTOP);
  
@@ -975,7 +990,7 @@ index 4ded5ae..2a97fec 100644
  
  		/* Now process is ptraced, so the current rootfs is already the
 diff --git a/src/tracee/seccomp.c b/src/tracee/seccomp.c
-index 66fa75a..2f45b96 100644
+index b5d3c8a..69bda6a 100644
 --- a/src/tracee/seccomp.c
 +++ b/src/tracee/seccomp.c
 @@ -1,4 +1,5 @@
@@ -984,7 +999,7 @@ index 66fa75a..2f45b96 100644
  #include <signal.h>    /* SIGSYS, */
  #include <unistd.h>    /* getpgid, */
  #include <utime.h>     /* utimbuf, */
-@@ -570,7 +571,7 @@ static int handle_seccomp_event_common(Tracee *tracee)
+@@ -588,7 +589,7 @@ static int handle_seccomp_event_common(Tracee *tracee)
  
  	case PR_time:
  	{

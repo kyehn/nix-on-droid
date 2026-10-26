@@ -1,8 +1,48 @@
 diff --git a/src/syscall/socket.c b/src/syscall/socket.c
-index ec74950..2e8fb76 100644
+index d35b5a5..26dceba 100644
 --- a/src/syscall/socket.c
 +++ b/src/syscall/socket.c
-@@ -111,20 +111,10 @@ int translate_socketcall_enter(Tracee *tracee, word_t *address, int size)
+@@ -29,8 +29,7 @@
+ #include <sys/socket.h>  /* struct sockaddr_un, AF_UNIX, */
+ #include <sys/un.h>      /* struct sockaddr_un, */
+ #include <sys/param.h>   /* MIN(), MAX(), */
+-#include <sys/stat.h>    /* lstat(2), S_ISSOCK(), */
+-#include <unistd.h>      /* unlink(2), */
++#include <sys/stat.h>    /* lstat(2), */
+ #include <sys/uio.h>     /* UIO_MAXIOV, */
+ #include <linux/net.h>   /* SYS_*, */
+ #include <stdint.h>      /* uint8_t, uint32_t, int32_t, */
+@@ -117,29 +116,6 @@ static int push_sockaddr_un(Tracee *tracee, struct sockaddr_un *sockaddr,
+ 	return 1;
+ }
+ 
+-/**
+- * Remove the socket that lies at the shorter host @path, if any.  A
+- * file of another type was put there by the tracees through the
+- * binding, it is theirs.
+- *
+- * Note: this is a talloc destructor.
+- */
+-static int remove_shorter_host_path(char *path)
+-{
+-	struct stat statl;
+-	int status;
+-
+-	status = lstat(path, &statl);
+-	if (status < 0 || !S_ISSOCK(statl.st_mode))
+-		return 0;
+-
+-	status = unlink(path);
+-	if (status < 0)
+-		note(NULL, WARNING, SYSTEM, "can't remove '%s'", path);
+-
+-	return 0;
+-}
+-
+ /**
+  * Translate the pathname of the struct sockaddr_un currently stored
+  * in the @tracee memory at the given @address.  See the documentation
+@@ -168,23 +144,26 @@ int translate_socketcall_enter(Tracee *tracee, word_t *address, int size)
  
  	/* Be careful: sun_path doesn't have to be null-terminated.  */
  	if (strlen(host_path) > sizeof_path) {
@@ -11,46 +51,58 @@ index ec74950..2e8fb76 100644
 +		const char *shorter_host_path;
  		Binding *binding;
  
--		/* The translated path is too long to fit the sun_path
--		 * array, so let's bind it to a shorter path.  */
--		shorter_host_path = create_temp_name(tracee->ctx, "proot");
--		if (shorter_host_path == NULL || strlen(shorter_host_path) > sizeof_path)
--			return -EINVAL;
--
--		(void) mktemp(shorter_host_path);
--
--		if (strlen(shorter_host_path) > sizeof_path)
--			return -EINVAL;
--
- 		/* Ensure the guest path of this new binding is
- 		 * canonicalized, as it is always assumed.  */
- 		strcpy(user_path, host_path);
-@@ -132,13 +122,26 @@ int translate_socketcall_enter(Tracee *tracee, word_t *address, int size)
- 		if (status < 0)
- 			return -EINVAL;
- 
-+		/* The translated path is too long to fit the sun_path
+ 		/* The translated path is too long to fit the sun_path
+-		 * array, so let's bind it to a shorter path.  The socket
+-		 * bound there, if any, is removed when PRoot exits rather
+-		 * than with this binding: the copies of the bindings made
+-		 * for a child that asked for a mount name-space of its
+-		 * own still lead there.  */
+-		shorter_host_path = create_temp_name(NULL, "proot");
+-		if (shorter_host_path == NULL)
 +		 * array, so let's bind it to a shorter path.  A private
 +		 * directory keeps the short path unique even when
-+		 * PROOT_TMP_DIR is itself deeply nested.  */
-+		shorter_host_dir = create_temp_directory(tracee->ctx, "proot");
++		 * PROOT_TMP_DIR is itself deeply nested, and it is
++		 * created without the racy mktemp(3) file name.  The
++		 * directory, and the socket bound within it, are removed
++		 * when PRoot exits rather than with this binding: the
++		 * copies of the bindings made for a child that asked for
++		 * a mount name-space of its own still lead there.  */
++		shorter_host_dir = create_temp_directory(NULL, "proot");
 +		if (shorter_host_dir == NULL)
-+			return -EINVAL;
-+
-+		shorter_host_path = talloc_asprintf(tracee->ctx, "%s/s", shorter_host_dir);
-+		if (shorter_host_path == NULL || strlen(shorter_host_path) > sizeof_path)
-+			return -EINVAL;
-+
- 		/* Bing the guest path to a shorter host path.  */
- 		binding = insort_binding3(tracee, tracee->ctx, shorter_host_path, user_path);
- 		if (binding == NULL)
  			return -EINVAL;
  
--		/* This temporary file (shorter_host_path) will be removed once the
--		 * binding is destroyed.  */
-+		/* This temporary directory (shorter_host_dir) and the file
-+		 * within it are removed once the binding is destroyed.  */
-+		talloc_reparent(tracee->ctx, binding, shorter_host_dir);
- 		talloc_reparent(tracee->ctx, binding, shorter_host_path);
+-		(void) mktemp(shorter_host_path);
+-
+-		if (strlen(shorter_host_path) > sizeof_path) {
+-			TALLOC_FREE(shorter_host_path);
++		shorter_host_path = talloc_asprintf(tracee->ctx, "%s/s", shorter_host_dir);
++		if (shorter_host_path == NULL || strlen(shorter_host_path) > sizeof_path) {
++			TALLOC_FREE(shorter_host_dir);
+ 			return -EINVAL;
+ 		}
+ 
+@@ -193,18 +172,21 @@ int translate_socketcall_enter(Tracee *tracee, word_t *address, int size)
+ 		strcpy(user_path, host_path);
+ 		status = detranslate_path(tracee, user_path, NULL);
+ 		if (status < 0) {
+-			TALLOC_FREE(shorter_host_path);
++			TALLOC_FREE(shorter_host_dir);
+ 			return -EINVAL;
+ 		}
+ 
+ 		/* Bing the guest path to a shorter host path.  */
+ 		binding = insort_binding3(tracee, tracee->ctx, shorter_host_path, user_path);
+ 		if (binding == NULL) {
+-			TALLOC_FREE(shorter_host_path);
++			TALLOC_FREE(shorter_host_dir);
+ 			return -EINVAL;
+ 		}
+ 
+-		talloc_set_destructor(shorter_host_path, remove_shorter_host_path);
++		/* The path name of the socket is removed once the binding
++		 * is destroyed; the private directory that contains it
++		 * outlives the binding, on purpose.  */
++		talloc_reparent(tracee->ctx, binding, shorter_host_path);
  
  		/* Let's use this shorter path now.  */
+ 		strcpy(host_path, shorter_host_path);
