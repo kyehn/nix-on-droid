@@ -1,0 +1,175 @@
+Subject: [PATCH] execve: the brk heap went back under a live signal frame
+
+The exec reclaim gives the guest's heap back to where it started, so
+that an exec chain does not accumulate one heap per program. The frame
+the kernel built for the trap is the guest's, and the guest returns
+into the new program through it: the SIGSYS tier answers the trapped
+execve by rewriting the frame the kernel delivered, and the guest's
+rt_sigreturn then reads it back.
+
+The kernel puts that frame on the guest's alternate signal stack
+whenever the guest registered one and the handler asked for it, and
+where that stack is comes from the guest's own allocator. On an Android
+guest that is the heap the reclaim is about to shrink. Giving the heap
+back unmapped the frame, and the write of the new program's registers
+into it faulted: SIGSEGV on the first exec, measured.
+
+The sweep already knew this. cng_scr_hit keeps a mapping that holds a
+live frame out of the sweep, which is why the frame survived it. The brk
+shrink asked no such question, and it is the one that unmapped the
+frame: the heap is a mapping of its own, and brk(cng_g_brk0) unmaps
+everything above the initial break whatever the sweep thought of it.
+
+SS_ONSTACK does not answer the question it looks like it answers. It
+says the interrupted stack pointer was inside the alternate stack,
+which holds only when the trap was taken while the thread already ran
+on it. A trap taken on the thread's ordinary stack is delivered *to*
+the alternate stack and comes back with SS_ONSTACK clear -- the common
+case, and the one that faulted. The kernel writes the frame's uc_stack
+from the thread's own registration (unsafe_save_altstack), and the
+registration says nothing about where the frame went: ss_sp and
+ss_size name the alternate stack, and the frame is in it.
+
+So the test is geometric. cng_scr_frame_ceiling asks whether the frame
+is inside the alternate stack the ucontext names, and keeps that stack
+whole when it is. The whole stack, not just the bytes of the ucontext:
+the frame is a siginfo and a ucontext side by side, and the siginfo
+sits below the ucontext (struct rt_sigframe is { siginfo info;
+ucontext uc; }), so an extent that began at the ucontext would leave
+it out. Where no alternate stack holds the frame, the ucontext's own
+extent is kept.
+
+cng_exec_reset now shrinks the heap to the ceiling of every live frame
+rather than to the initial break, and leaves the heap where it is
+where the ceiling reaches it. The heap is still given back: everything
+below the frame is reclaimed, and a guest with no live frame at the
+reclaim gets the whole heap back as before.
+
+Compiled for aarch64 with -Werror. The suite needs aarch64 and this
+host has neither qemu-user nor an aarch64 device, so the change was
+not run against it here; the arithmetic was checked against the
+addresses in the core that caught it, and the reclaim keeps the frame
+it used to unmap.
+---
+ include/cng/monitor.h |  4 +++
+ src/monitor/execve.c  | 18 +++++++++++--
+ src/monitor/sigsys.c  | 59 +++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 79 insertions(+), 2 deletions(-)
+
+diff --git a/include/cng/monitor.h b/include/cng/monitor.h
+index c577d05..494ad82 100644
+--- a/include/cng/monitor.h
++++ b/include/cng/monitor.h
+@@ -627,6 +627,10 @@ int cng_scratch_slot_for(long tid, unsigned long *hi_out);
+ /* Does [lo, hi) touch a scratch stack? Asked by the exec reclaim, which
+  * must not give a slot back as if it were the outgoing program's. */
+ int cng_scr_hit(unsigned long lo, unsigned long hi);
++/* The top of every live signal frame below `limit`, or 0 when there is none:
++ * the exec reclaim must not give the heap back under a frame the guest still
++ * returns through. */
++unsigned long cng_scr_frame_ceiling(unsigned long limit);
+ 
+ /* Install the SIGSYS handler alone (no filter, no probes): testing. */
+ int cng_sigsys_install_only(void);
+diff --git a/src/monitor/execve.c b/src/monitor/execve.c
+index f79456b..36d06c7 100644
+--- a/src/monitor/execve.c
++++ b/src/monitor/execve.c
+@@ -1505,8 +1505,22 @@ static void cng_exec_reset(void) {
+                 24 /* sizeof(struct robust_list_head) */, 0, 0, 0, 0);
+     if (cng_g_brk0) {
+         long cur = CNG_SYS(__NR_brk, 0, 0, 0, 0, 0, 0);
+-        if (cur > 0 && (unsigned long)cur > cng_g_brk0)
+-            CNG_SYS(__NR_brk, cng_g_brk0, 0, 0, 0, 0, 0);
++        if (cur > 0 && (unsigned long)cur > cng_g_brk0) {
++            /* The heap goes back to where it started, but not under a signal
++             * frame the guest still has to return through. The frame the kernel
++             * built for this trap lies on the guest's alternate signal stack,
++             * and the guest's own allocator may have put that stack in the
++             * heap. Shrinking past it unmapped the frame, and the write of the
++             * new program's registers into it faulted: SIGSEGV on the first
++             * exec, measured. The ceiling is the top of every live frame; where
++             * it reaches, the heap stays where it is. */
++            unsigned long target = cng_g_brk0;
++            unsigned long ceiling = cng_scr_frame_ceiling((unsigned long)cur);
++            if (ceiling > target)
++                target = cng_page_up(ceiling);
++            if ((unsigned long)cur > target)
++                CNG_SYS(__NR_brk, target, 0, 0, 0, 0, 0);
++        }
+     }
+ }
+ 
+diff --git a/src/monitor/sigsys.c b/src/monitor/sigsys.c
+index 6adfdc5..5455542 100644
+--- a/src/monitor/sigsys.c
++++ b/src/monitor/sigsys.c
+@@ -773,6 +773,65 @@ int cng_scr_hit(unsigned long lo, unsigned long hi) {
+     return 0;
+ }
+ 
++/* The top of every live signal frame below `limit`.
++ *
++ * The frame the kernel built for a trap belongs to the guest: the SIGSYS tier
++ * returns into the new program through rt_sigreturn, and what that reads is
++ * the frame the kernel built when it delivered the trap. The kernel puts that
++ * frame on the guest's alternate signal stack whenever the guest registered one
++ * and the handler asked for it — and where that stack is comes from the guest's
++ * own allocator, which on an Android guest is the heap. Giving the heap back
++ * unmapped the frame, and the write of the new program's registers into it
++ * faulted: SIGSEGV on the first exec, measured.
++ *
++ * SS_ONSTACK does not answer this. It says the interrupted stack pointer was
++ * inside the alternate stack, which holds only when the trap was taken while
++ * the thread already ran on it. A trap taken on the thread's ordinary stack is
++ * delivered *to* the alternate stack and comes back with SS_ONSTACK clear —
++ * the common case, and the one that faulted: the kernel writes the frame's
++ * uc_stack from the thread's own registration (unsafe_save_altstack), and the
++ * registration says nothing about where the frame went. The test is therefore
++ * geometric: is the frame inside the alternate stack the ucontext names?
++ *
++ * The whole alternate stack is kept, not just the bytes of the ucontext: the
++ * frame is a siginfo and a ucontext side by side, and the siginfo sits below
++ * the ucontext (struct rt_sigframe is { siginfo info; ucontext uc; }), so an
++ * extent that began at the ucontext would leave it out. Keeping the stack costs
++ * one alternate stack and not a chain of them: the frame is dead one generation
++ * later, when the next trap's frame is somewhere else.
++ *
++ * `limit` is the top of the region being given back. A frame above it is not
++ * in that region, and the reclaim cannot reach it. */
++unsigned long cng_scr_frame_ceiling(unsigned long limit) {
++    unsigned long ceiling = 0;
++    for (int i = 0; i < CNG_SCR_N; i++) {
++        struct cng_ucontext *uc = (struct cng_ucontext *)
++            __atomic_load_n(&cng_scr[i].uc, __ATOMIC_ACQUIRE);
++        if (!uc)
++            continue; /* no frame on this slot */
++        unsigned long u = (unsigned long)uc;
++        if (u >= limit)
++            continue; /* above the region: the reclaim cannot reach it */
++        unsigned long top = u + sizeof(struct cng_ucontext);
++        unsigned long sp = (unsigned long)uc->uc_stack.ss_sp;
++        unsigned long size = uc->uc_stack.ss_size;
++        /* u - sp < size, rather than u < sp + size, so that a stack whose end
++         * wraps cannot claim a frame it does not hold. */
++        if (size && sp && !(uc->uc_stack.ss_flags & CNG_SS_DISABLE) &&
++            u >= sp && u - sp < size) {
++            /* The frame is on the alternate stack: keep all of it. */
++            unsigned long end = sp + size;
++            if (end > top)
++                top = end;
++        }
++        if (top > limit)
++            top = limit;
++        if (top > ceiling)
++            ceiling = top;
++    }
++    return ceiling;
++}
++
+ /* Is `tid` still a thread of this process? tgkill with signal 0 does the
+  * existence check and delivers nothing — one syscall, where a /proc read would
+  * be several, and this runs inside the handler. */
+-- 
+2.56.0
+
