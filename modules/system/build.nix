@@ -19,6 +19,10 @@
       description = "Base directory for Nix-on-Droid installation.";
     };
     proot = {
+      package = lib.mkOption {
+        type = lib.types.package;
+        default = if pkgs.stdenv.targetPlatform.isAarch64 then pkgs.fake-chroot-ng else pkgs.proot-termux;
+      };
       bind = lib.mkOption {
         type = lib.types.listOf lib.types.attrs;
         default = [ ];
@@ -63,19 +67,9 @@
         session-login-inner = pkgs.session-login-inner.override { inherit config; };
       in
       {
-        files = {
-          "bin/${pkgs.session-login.meta.mainProgram}" = {
-            source = lib.getExe session-login;
-            mode = "0755";
-          };
-          "bin/${pkgs.session-login-inner.meta.mainProgram}.new" = {
-            source = lib.getExe session-login-inner;
-            mode = "0755";
-          };
-          "bin/${pkgs.proot-termux.meta.mainProgram}.new" = {
-            source = lib.getExe pkgs.proot-termux;
-            mode = "0755";
-          };
+        files."bin/${pkgs.session-login.meta.mainProgram}" = {
+          source = lib.getExe session-login;
+          mode = "0755";
         };
         etc = {
           "UNINTIALISED" = {
@@ -86,12 +80,13 @@
             source =
               let
                 proot_binary_path =
-                  config.system.build.installationDir + "/bin/" + pkgs.proot-termux.meta.mainProgram;
+                  (lib.removeSuffix "/" config.system.build.installationDir)
+                  + (lib.getExe config.system.build.proot.package);
               in
               (pkgs.formats.toml { }).generate "config.toml" {
                 login_inner_binary_path = lib.getExe session-login-inner;
                 installation_dir = config.system.build.installationDir;
-                pending_artifacts = [ proot_binary_path ];
+                pending_artifacts = [ ];
                 user = {
                   name = config.users.users.nix-on-droid.name;
                   home = config.users.users.nix-on-droid.home;
@@ -115,37 +110,60 @@
           (
             s:
             let
-              parts = lib.splitString ":" s;
+              parts = lib.splitString ":" (
+                if (config.system.build.proot.package.meta.mainProgram == "chroot-ng") then
+                  lib.removeSuffix "!" s
+                else
+                  s
+              );
             in
             {
               host_path = builtins.elemAt parts 0;
               guest_location = builtins.elemAt parts 1;
             }
           )
+          (
+            [
+              "${config.system.build.installationDir}/nix:/nix"
+              "${config.system.build.installationDir}/root:/root"
+              "${config.system.build.installationDir}/run:/run"
+              "${config.system.build.installationDir}/bin:/bin!"
+              "${config.system.build.installationDir}/etc:/etc!"
+              "${config.system.build.installationDir}/tmp:/tmp"
+              "${config.system.build.installationDir}/usr:/usr"
+              "${config.system.build.installationDir}/var:/var"
+            ]
+            ++ lib.optionals (config.system.build.proot.package.meta.mainProgram == "chroot-ng") [
+              "${config.system.build.installationDir}/.l2s:/.l2s"
+            ]
+            ++ lib.optionals (config.system.build.proot.package.meta.mainProgram == "proot") [
+              "${config.system.build.installationDir}/dev/shm:/dev/shm"
+              "/dev/pts:/dev/pts"
+              "${config.system.build.installationDir}${pkgs.writeText "fakeProcStat" ''
+                btime 0
+              ''}:/proc/stat"
+              "${config.system.build.installationDir}${pkgs.writeText "fakeProcUptime" ''
+                0.00 0.00
+              ''}:/proc/uptime"
+            ]
+          );
+      extraArgs =
+        if config.system.build.proot.package.meta.mainProgram == "chroot-ng" then
           [
-            "${config.system.build.installationDir}/nix:/nix"
-            "${config.system.build.installationDir}/root:/root"
-            "${config.system.build.installationDir}/run:/run"
-            "${config.system.build.installationDir}/bin:/bin!"
-            "${config.system.build.installationDir}/etc:/etc!"
-            "${config.system.build.installationDir}/tmp:/tmp"
-            "${config.system.build.installationDir}/usr:/usr"
-            "${config.system.build.installationDir}/var:/var"
-            "${config.system.build.installationDir}/dev/shm:/dev/shm"
-            "/dev/pts:/dev/pts"
-            "${config.system.build.installationDir}${pkgs.writeText "fakeProcStat" ''
-              btime 0
-            ''}:/proc/stat"
-            "${config.system.build.installationDir}${pkgs.writeText "fakeProcUptime" ''
-              0.00 0.00
-            ''}:/proc/uptime"
+            "--share-abstract-sockets"
+            "--shared-proc"
+            "--no-ptrace"
+            "--link2symlink"
+            "--work-dir"
+            config.users.users.nix-on-droid.home
+          ]
+        else
+          [
+            "--link2symlink"
+            "--sysvipc"
+            "--ashmem-memfd"
+            "--kernel-release=5.4.254"
           ];
-      extraArgs = [
-        "--link2symlink"
-        "--sysvipc"
-        "--ashmem-memfd"
-        "--kernel-release=5.4.254"
-      ];
     };
   };
 }
