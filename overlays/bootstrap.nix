@@ -23,7 +23,7 @@ runCommand "bootstrap"
     };
   }
   ''
-    mkdir --parents $out/{.l2s,bin,root,tmp,run,var,usr/bin,nix/store}
+    mkdir --parents $out/{.l2s,bin,root,tmp,run,var,build,usr/bin,nix/store}
     mkdir --parents $out/nix/var/nix/gcroots $out/nix/var/nix/profiles
     ln --symbolic --no-dereference ${config.system.build.toplevel} $out/run/current-system
     ln --symbolic --no-dereference ${config.system.build.toplevel} $out/nix/var/nix/gcroots/current-system

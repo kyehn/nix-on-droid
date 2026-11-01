@@ -7,13 +7,13 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "proot-termux";
-  version = "5.1.107.101-unstable-2026-10-24";
+  version = "5.1.107.102-unstable-2026-11-01";
 
   src = fetchFromGitHub {
     repo = "proot";
     owner = "termux";
-    rev = "b27d81a68d765f3462e807f4a14e01a03f8e89ea";
-    hash = "sha256-774IrlPynkI/t5368ftLCDknwpKxPipAu0JB3JC2j8c=";
+    rev = "52d65a4dc140ca554d241a1438ddd4f6b00c9813";
+    hash = "sha256-a13JIJkHAXl68BPVafDBcsNln/0TzC0P3Ye+urU7HjU=";
   };
 
   patches = [
