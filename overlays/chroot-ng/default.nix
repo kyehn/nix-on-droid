@@ -6,7 +6,7 @@
 stdenv.mkDerivation (finalAttrs: {
   pname = "chroot-ng";
   version = "0-unstable-2026-10-31";
-  
+
   __structuredAttrs = true;
   strictDeps = true;
 
@@ -35,7 +35,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   buildTarget = "chroot-ng";
 
-  env.CHROOTNG_CFLAGS = [ "-Werror" ];
+  env.CHROOTNG_CFLAGS = "-Werror";
 
   installPhase = ''
     runHook preInstall
