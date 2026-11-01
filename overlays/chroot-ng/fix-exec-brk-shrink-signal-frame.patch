@@ -51,15 +51,15 @@ not run against it here; the arithmetic was checked against the
 addresses in the core that caught it, and the reclaim keeps the frame
 it used to unmap.
 ---
- include/cng/monitor.h |  4 +++
- src/monitor/execve.c  | 18 +++++++++++--
- src/monitor/sigsys.c  | 59 +++++++++++++++++++++++++++++++++++++++++++
+ src/chroot-ng/include/cng/monitor.h |  4 +++
+ src/chroot-ng/monitor/execve.c  | 18 +++++++++++--
+ src/chroot-ng/monitor/sigsys.c  | 59 +++++++++++++++++++++++++++++++++++++++++++
  3 files changed, 79 insertions(+), 2 deletions(-)
 
-diff --git a/include/cng/monitor.h b/include/cng/monitor.h
+diff --git a/src/chroot-ng/include/cng/monitor.h b/src/chroot-ng/include/cng/monitor.h
 index c577d05..494ad82 100644
---- a/include/cng/monitor.h
-+++ b/include/cng/monitor.h
+--- a/src/chroot-ng/include/cng/monitor.h
++++ b/src/chroot-ng/include/cng/monitor.h
 @@ -627,6 +627,10 @@ int cng_scratch_slot_for(long tid, unsigned long *hi_out);
  /* Does [lo, hi) touch a scratch stack? Asked by the exec reclaim, which
   * must not give a slot back as if it were the outgoing program's. */
@@ -71,10 +71,10 @@ index c577d05..494ad82 100644
  
  /* Install the SIGSYS handler alone (no filter, no probes): testing. */
  int cng_sigsys_install_only(void);
-diff --git a/src/monitor/execve.c b/src/monitor/execve.c
+diff --git a/src/chroot-ng/monitor/execve.c b/src/chroot-ng/monitor/execve.c
 index f79456b..36d06c7 100644
---- a/src/monitor/execve.c
-+++ b/src/monitor/execve.c
+--- a/src/chroot-ng/monitor/execve.c
++++ b/src/chroot-ng/monitor/execve.c
 @@ -1505,8 +1505,22 @@ static void cng_exec_reset(void) {
                  24 /* sizeof(struct robust_list_head) */, 0, 0, 0, 0);
      if (cng_g_brk0) {
@@ -100,10 +100,10 @@ index f79456b..36d06c7 100644
      }
  }
  
-diff --git a/src/monitor/sigsys.c b/src/monitor/sigsys.c
+diff --git a/src/chroot-ng/monitor/sigsys.c b/src/chroot-ng/monitor/sigsys.c
 index 6adfdc5..5455542 100644
---- a/src/monitor/sigsys.c
-+++ b/src/monitor/sigsys.c
+--- a/src/chroot-ng/monitor/sigsys.c
++++ b/src/chroot-ng/monitor/sigsys.c
 @@ -773,6 +773,65 @@ int cng_scr_hit(unsigned long lo, unsigned long hi) {
      return 0;
  }

@@ -21,8 +21,8 @@ in
     };
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.nix;
-      defaultText = lib.literalExpression "pkgs.nix";
+      default = pkgs.nixVersions.nix_2_34;
+      defaultText = lib.literalExpression "pkgs.nixVersions.nix_2_34";
       description = ''
         This option specifies the Nix package instance to use throughout the system.
       '';
@@ -204,6 +204,7 @@ in
           cfg.settings
           // {
             sandbox = false;
+            filter-syscalls = false;
             allow-unsafe-native-code-during-evaluation = true;
             trusted-users = [ ];
             build-dir = "${config.system.build.installationDir}/build";

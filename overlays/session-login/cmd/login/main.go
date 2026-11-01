@@ -120,17 +120,22 @@ func main() {
 			env = append(env, "USER="+cfg.User.Name)
 			env = append(env, "PROOT_TMP_DIR="+filepath.Join(cfg.InstallationDir, "tmp"))
 			env = append(env, "PROOT_L2S_DIR="+filepath.Join(cfg.InstallationDir, ".l2s"))
+			env = append(env, "TMPDIR="+filepath.Join(cfg.InstallationDir, "tmp"))
 			env = append(env, "PATH="+filepath.Join(cfg.InstallationDir, "bin"))
 			if _, err := os.Stat(cfg.Proot.BinaryPath); err != nil {
 				return eris.Wrap(err, "failed to find proot binary")
 			}
-			args := []string{filepath.Base(cfg.Proot.BinaryPath)}
+			engine := filepath.Base(cfg.Proot.BinaryPath)
+			args := []string{engine}
 			for _, b := range cfg.Proot.Bind {
 				if _, err := os.Stat(b.HostPath); err == nil {
 					args = append(args, "-b", b.HostPath+":"+b.GuestLocation)
 				}
 			}
 			args = append(args, cfg.Proot.ExtraArgs...)
+			if engine == "chroot-ng" {
+				args = append(args, "/")
+			}
 			args = append(args, cfg.LoginInnerBinaryPath)
 			if cmd.Bool("dry-run") {
 				sugar.Infof("dry-run: exec %s %s", cfg.Proot.BinaryPath, strings.Join(args, " "))

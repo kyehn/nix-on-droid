@@ -4,14 +4,17 @@
 }:
 
 stdenv.mkDerivation (finalAttrs: {
-  pname = "fake-chroot-ng";
-  version = "1.6.0-unstable-2026-10-30";
+  pname = "chroot-ng";
+  version = "0-unstable-2026-10-31";
+  
+  __structuredAttrs = true;
+  strictDeps = true;
 
   src = fetchFromGitHub {
     owner = "sylirre";
-    repo = "fake-chroot-ng";
-    rev = "869c42b705e889a487a9503e219fedfab71f4d88";
-    hash = "sha256-TNQtoFzxJCabDPv5izgstGNinUlK1Aikisfu/SPzFEY=";
+    repo = "arm64emu";
+    rev = "2e1a0870db210c1f6d51beed44c6b5a4cc8f362a";
+    hash = "sha256-qaOs2znWUk6T1DXlkGs/kK0nxbODrY1IozH1iZNuH9U=";
   };
 
   patches = [
@@ -30,10 +33,9 @@ stdenv.mkDerivation (finalAttrs: {
     ./fix-exec-brk-shrink-signal-frame.patch
   ];
 
-  CFLAGS = [
-    "-O2"
-    "-Werror"
-  ];
+  buildTarget = "chroot-ng";
+
+  env.CHROOTNG_CFLAGS = [ "-Werror" ];
 
   installPhase = ''
     runHook preInstall

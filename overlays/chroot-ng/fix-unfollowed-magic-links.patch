@@ -21,12 +21,12 @@ goes to the kernel as it stands.  The kernel then reports the magic
 link the way /proc does.  Following the link is unchanged.
 
 ---
- src/monitor/dispatch.c |   21 +++++++++++++++++++--
+ src/chroot-ng/monitor/dispatch.c |   21 +++++++++++++++++++--
  1 file changed, 19 insertions(+), 2 deletions(-)
 
-diff --git a/src/monitor/dispatch.c b/src/monitor/dispatch.c
---- a/src/monitor/dispatch.c
-+++ b/src/monitor/dispatch.c
+diff --git a/src/chroot-ng/monitor/dispatch.c b/src/chroot-ng/monitor/dispatch.c
+--- a/src/chroot-ng/monitor/dispatch.c
++++ b/src/chroot-ng/monitor/dispatch.c
 @@ -720,7 +720,8 @@
      return pl && strcmp(canon + pl, "fd") == 0;
  }

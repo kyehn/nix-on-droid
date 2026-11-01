@@ -39,9 +39,7 @@ jobs:
           pushd overlays/session-login-inner && go get -u && go mod tidy && popd
           nix run nixpkgs#nix-update -- --build --version=skip session-login-inner.base --flake
       - if: ${{ runner.arch == 'ARM64' }}
-        run: |
-          nix run nixpkgs#nix-update -- --build --version=branch fake-chroot-ng --flake
-          nix run nixpkgs#nix-update -- --build --version=branch arm64emu-user --flake
+        run: nix run nixpkgs#nix-update -- --build --version=branch chroot-ng --flake
       - if: ${{ runner.arch == 'ARM64' }}
         run: |
           nix fmt

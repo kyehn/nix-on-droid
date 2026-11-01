@@ -63,8 +63,7 @@
           packages = {
             inherit (pkgs)
               proot-termux
-              arm64emu-user
-              fake-chroot-ng
+              chroot-ng
               switch-to-configuration
               session-login
               session-login-inner

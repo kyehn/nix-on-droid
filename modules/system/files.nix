@@ -194,6 +194,7 @@
           linker = lib.getExe pkgs.smfh;
         in
         ''
+          ${lib.getExe' pkgs.coreutils "cp"} ${lib.removeSuffix "/" config.system.build.installationDir}/bin/${pkgs.session-login.meta.mainProgram} ${lib.removeSuffix "/" config.system.build.installationDir}/bin/${pkgs.session-login.meta.mainProgram}.old
           ${lib.getExe' pkgs.coreutils "mkdir"} --parents "${stateDir}"
           if ${lib.getExe' pkgs.coreutils "test"} -f "${oldManifest}"; then
             ${linker} diff "${smfhManifest}" "${oldManifest}"
