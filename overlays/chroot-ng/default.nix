@@ -5,16 +5,16 @@
 
 stdenv.mkDerivation (finalAttrs: {
   pname = "chroot-ng";
-  version = "0-unstable-2026-10-31";
-  
+  version = "0-unstable-2026-11-19";
+
   __structuredAttrs = true;
   strictDeps = true;
 
   src = fetchFromGitHub {
     owner = "sylirre";
     repo = "arm64emu";
-    rev = "2e1a0870db210c1f6d51beed44c6b5a4cc8f362a";
-    hash = "sha256-qaOs2znWUk6T1DXlkGs/kK0nxbODrY1IozH1iZNuH9U=";
+    rev = "c3527a0c513e264b0583ca0f38a4140d7b67cacf";
+    hash = "sha256-Lg92ncdwmWQ25EQZsLvLq2g1+SOkzkeGGL/zfrpcFqQ=";
   };
 
   patches = [
@@ -35,7 +35,7 @@ stdenv.mkDerivation (finalAttrs: {
 
   buildTarget = "chroot-ng";
 
-  env.CHROOTNG_CFLAGS = [ "-Werror" ];
+  env.CHROOTNG_CFLAGS = "-Werror";
 
   installPhase = ''
     runHook preInstall
