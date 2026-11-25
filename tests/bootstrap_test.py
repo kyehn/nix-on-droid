@@ -89,7 +89,7 @@ def run(d):
     wait_for(d, "bash-")
     screenshot(d, "new-configuration-bash")
 
-    run_cmd(d, "nix run nixpkgs#fastfetch")
+    run_cmd(d, "nix shell nixpkgs#fastfetch-unwrapped --command fastfetch")
     wait_for(d, "Terminal", timeout=120)
     screenshot(d, "fastfetch")
 

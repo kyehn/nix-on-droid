@@ -59,6 +59,7 @@ in
     environment = {
       systemPackages = with pkgs; [
         config.nix.package
+        bash
         curl
         diffutils
         gawk
