@@ -21,7 +21,7 @@
     proot = {
       package = lib.mkOption {
         type = lib.types.package;
-        default = if pkgs.stdenv.targetPlatform.isAarch64 then pkgs.chroot-ng else pkgs.proot-termux;
+        default = if pkgs.stdenv.targetPlatform.isAarch64 then pkgs.arm64emu else pkgs.proot-termux;
       };
       bind = lib.mkOption {
         type = lib.types.listOf lib.types.attrs;
@@ -111,7 +111,7 @@
             s:
             let
               parts = lib.splitString ":" (
-                if (config.system.build.proot.package.meta.mainProgram == "chroot-ng") then
+                if (config.system.build.proot.package.meta.mainProgram == "arm64emu") then
                   lib.removeSuffix "!" s
                 else
                   s
@@ -133,7 +133,7 @@
               "${config.system.build.installationDir}/usr:/usr"
               "${config.system.build.installationDir}/var:/var"
             ]
-            ++ lib.optionals (config.system.build.proot.package.meta.mainProgram == "chroot-ng") [
+            ++ lib.optionals (config.system.build.proot.package.meta.mainProgram == "arm64emu") [
               "${config.system.build.installationDir}/.l2s:/.l2s"
             ]
             ++ lib.optionals (config.system.build.proot.package.meta.mainProgram == "proot") [
@@ -148,11 +148,10 @@
             ]
           );
       extraArgs =
-        if config.system.build.proot.package.meta.mainProgram == "chroot-ng" then
+        if config.system.build.proot.package.meta.mainProgram == "arm64emu" then
           [
             "--share-abstract-sockets"
             "--shared-proc"
-            "--no-ptrace"
             "--link2symlink"
             "--work-dir"
             config.users.users.nix-on-droid.home

@@ -63,7 +63,7 @@
           packages = {
             inherit (pkgs)
               proot-termux
-              chroot-ng
+              arm64emu
               switch-to-configuration
               session-login
               session-login-inner

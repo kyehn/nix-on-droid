@@ -127,13 +127,16 @@ func main() {
 			}
 			engine := filepath.Base(cfg.Proot.BinaryPath)
 			args := []string{engine}
+			if engine == "arm64emu" {
+				args = append(args, "chroot", "--native")
+			}
 			for _, b := range cfg.Proot.Bind {
 				if _, err := os.Stat(b.HostPath); err == nil {
 					args = append(args, "-b", b.HostPath+":"+b.GuestLocation)
 				}
 			}
 			args = append(args, cfg.Proot.ExtraArgs...)
-			if engine == "chroot-ng" {
+			if engine == "arm64emu" {
 				args = append(args, "/")
 			}
 			args = append(args, cfg.LoginInnerBinaryPath)

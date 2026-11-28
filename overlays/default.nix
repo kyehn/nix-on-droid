@@ -28,7 +28,7 @@ in
     talloc = prev.pkgsStatic.pkgsLLVM.callPackage ./talloc.nix { };
     stdenv = prev.pkgsStatic.pkgsLLVM.stdenvAdapters.makeStaticBinaries prev.pkgsStatic.pkgsLLVM.stdenv;
   };
-  chroot-ng = prev.pkgsStatic.pkgsLLVM.callPackage ./chroot-ng {
+  arm64emu = prev.pkgsStatic.pkgsLLVM.callPackage ./arm64emu {
     stdenv = prev.pkgsStatic.pkgsLLVM.stdenvAdapters.makeStaticBinaries prev.pkgsStatic.pkgsLLVM.stdenv;
   };
   smfh = prev.smfh.overrideAttrs (oldAttrs: {

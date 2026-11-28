@@ -2,7 +2,7 @@ Subject: [PATCH] monitor: do not expand magic links that are not followed
 
 /proc/<pid>/{exe,cwd,root} are magic links: readlink(2) resolves them,
 but lstat(2) reports the link itself -- S_IFLNK, st_size 0 -- and only
-following it leads to the target.  The path walk expanded them whatever
+following it leads to the target. The path walk expanded them whatever
 the caller asked for, so an lstat saw the target's file type, and code
 that checks the type before reading a link concluded the path was not a
 symlink at all.
@@ -10,25 +10,20 @@ symlink at all.
 Every Nix 2.3x nix does exactly that to /proc/self/exe: getSelfExe()
 reads it with std::filesystem::read_symlink(), whose libstdc++
 implementation lstats first and throws EINVAL when S_ISLNK is false.
-On chroot-ng that took `nix --version` down at startup with
+On arm64emu's native chroot tier that took `nix --version` down at
+startup with
 
     error: reading symbolic link "/proc/self/exe": Invalid argument
 
 proc_magic() now takes the walk's verdict -- is this the last component,
 is it about to be followed -- and, when the link is the answer rather
 than a step towards the target, returns PROC_MAGIC_HOST so the name
-goes to the kernel as it stands.  The kernel then reports the magic
-link the way /proc does.  Following the link is unchanged.
-
----
- src/chroot-ng/monitor/dispatch.c |   21 +++++++++++++++++++--
- 1 file changed, 19 insertions(+), 2 deletions(-)
-
-diff --git a/src/chroot-ng/monitor/dispatch.c b/src/chroot-ng/monitor/dispatch.c
---- a/src/chroot-ng/monitor/dispatch.c
-+++ b/src/chroot-ng/monitor/dispatch.c
-@@ -720,7 +720,8 @@
-     return pl && strcmp(canon + pl, "fd") == 0;
+goes to the kernel as it stands. The kernel then reports the magic
+link the way /proc does. Following the link is unchanged.
+--- a/src/arm64emu/chroot/native/monitor/dispatch.c
++++ b/src/arm64emu/chroot/native/monitor/dispatch.c
+@@ -1009,7 +1009,8 @@
+            strcmp(host, canon) == 0;
  }
  
 -static int proc_magic(char *cur, size_t sz) {
@@ -37,7 +32,7 @@ diff --git a/src/chroot-ng/monitor/dispatch.c b/src/chroot-ng/monitor/dispatch.c
      size_t pl = proc_pid_prefix(cur, 0);
      if (!pl)
          return PROC_MAGIC_NONE;
-@@ -784,6 +785,21 @@
+@@ -1073,6 +1074,21 @@
       * verdict, and the walk answers it -ENAMETOOLONG — the XLATE_TOOLONG
       * rule, for a name the view cannot express. The fixup is handed the whole
       * buffer, so a target that fills it is told apart from one that fits. */
@@ -59,10 +54,10 @@ diff --git a/src/chroot-ng/monitor/dispatch.c b/src/chroot-ng/monitor/dispatch.c
      char link[CNG_PATH_MAX], tmp[CNG_PATH_MAX];
      if (pl + vl >= sizeof link)
          return PROC_MAGIC_NONE;
-@@ -1208,7 +1224,8 @@
-          * name the view cannot express (see dev_magic). */
-         if (dev_magic(canon, sizeof canon) < 0)
-             return -ENAMETOOLONG;
+@@ -1510,7 +1526,8 @@
+          * described the program's file, and an unlink of it removed that. */
+         if (last && !deref_final && !want_dir && proc_view_link(canon))
+             continue;
 -        int magic = proc_magic(canon, sizeof canon);
 +        int magic = proc_magic(canon, sizeof canon, last, deref_final,
 +                               want_dir);
